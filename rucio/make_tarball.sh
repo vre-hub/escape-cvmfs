@@ -30,14 +30,20 @@ run_install () {
   echo "$1: Installing dependencies"
   pip install pip --upgrade  # Upgrade pip
   pip install -U setuptools  # Upgrade setuptools
-  pip install rucio-clients[argcomplete]==$RUCIO_VERSION  # Install Rucio clients
+  pip install rucio-clients==$RUCIO_VERSION  # Install Rucio clients
+  pip install argcomplete  # Install argcomplete dependency separately
   pip freeze  # Display installed packages
 
   echo "$1: Bringing things together"
   # Ensure dogpile package is properly initialized
-  touch $(pyenv virtualenv-prefix)/envs/rucio-py$1/lib/python${1%*.*}/site-packages/dogpile/__init__.py
+  DOGPILE_PATH=$(pyenv virtualenv-prefix)/envs/rucio-py$1/lib/python${1%*.*}/site-packages/dogpile
+  if [ -d "$DOGPILE_PATH" ]; then
+    touch "$DOGPILE_PATH/__init__.py"
+  else
+    echo "Warning: Dogpile package not found at $DOGPILE_PATH"
+  fi
   # Copy the Python library files to the `lib` directory
-  /usr/bin/cp -r $(pyenv virtualenv-prefix)/envs/rucio-py$1/lib/python${1%*.*}/ lib/
+  cp -r $(pyenv virtualenv-prefix)/envs/rucio-py$1/lib/python${1%*.*}/ lib/
 }
 
 # Create the main directory for the tarball
@@ -55,9 +61,9 @@ echo "General: Copying in bin/"
 pyenv local rucio-py$BASE_PYTHON_VERSION
 mkdir bin  # Create a directory for executable scripts
 # Copy Rucio executables to the `bin` directory
-/usr/bin/cp $(pyenv virtualenv-prefix)/envs/rucio-py$BASE_PYTHON_VERSION/bin/rucio bin/
-/usr/bin/cp $(pyenv virtualenv-prefix)/envs/rucio-py$BASE_PYTHON_VERSION/bin/rucio-admin bin/
-/usr/bin/cp $(pyenv virtualenv-prefix)/envs/rucio-py$BASE_PYTHON_VERSION/bin/register-python-argcomplete bin/
+cp $(pyenv virtualenv-prefix)/envs/rucio-py$BASE_PYTHON_VERSION/bin/rucio bin/
+cp $(pyenv virtualenv-prefix)/envs/rucio-py$BASE_PYTHON_VERSION/bin/rucio-admin bin/
+cp $(pyenv virtualenv-prefix)/envs/rucio-py$BASE_PYTHON_VERSION/bin/register-python-argcomplete bin/
 
 echo "General: Adapting bin scripts"
 # Modify the shebang in the copied scripts to use the RUCIO_PYTHONBIN environment variable
@@ -67,12 +73,13 @@ sed -i '/\/root\/.pyenv\/versions\/'"$BASE_PYTHON_VERSION"'\/envs\/rucio-py'"$BA
 
 echo "General: Copying setup script"
 # Copy the setup script into the package
-/usr/bin/cp ../path/to/your/cleaned-up-setup.sh setup.sh
+cp -r ../rucio/common/setup_scripts/setup.* .
 
 echo "General: Creating archive"
 # Create a tarball of the Rucio clients
 tar zcf ../rucio-clients-$RUCIO_VERSION.tar.gz *
-cd ..
+
+echo "General: DONE!"
 
 # Provide the command to upload the tarball to a remote server
-echo "scp rucio-clients-$RUCIO_VERSION.tar.gz ${USER}@lxplus:~/public/rucio-clients/"
+# echo "scp rucio-clients-$RUCIO_VERSION.tar.gz ${USER}@lxplus:~/public/rucio-clients/"
