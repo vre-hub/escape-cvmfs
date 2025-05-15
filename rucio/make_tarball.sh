@@ -66,10 +66,14 @@ cp $(pyenv virtualenv-prefix)/envs/rucio-py$BASE_PYTHON_VERSION/bin/rucio-admin 
 cp $(pyenv virtualenv-prefix)/envs/rucio-py$BASE_PYTHON_VERSION/bin/register-python-argcomplete bin/
 
 echo "General: Adapting bin scripts"
-# Modify the shebang in the copied scripts to use the RUCIO_PYTHONBIN environment variable
-sed -i '/\/root\/.pyenv\/versions\/'"$BASE_PYTHON_VERSION"'\/envs\/rucio-py'"$BASE_PYTHON_VERSION"'\/bin\/python'"${BASE_PYTHON_VERSION%*.*}"'/c\#!\/bin\/bash\n\# -*- coding: utf-8 -*-\n\"exec\" \"$RUCIO_PYTHONBIN\" \"-u\" \"-Wignore\" \"$0\" \"$@\"\n' bin/rucio
-sed -i '/\/root\/.pyenv\/versions\/'"$BASE_PYTHON_VERSION"'\/envs\/rucio-py'"$BASE_PYTHON_VERSION"'\/bin\/python'"${BASE_PYTHON_VERSION%*.*}"'/c\#!\/bin\/bash\n\# -*- coding: utf-8 -*-\n\"exec\" \"$RUCIO_PYTHONBIN\" \"-u\" \"-Wignore\" \"$0\" \"$@\"\n' bin/rucio-admin
-sed -i '/\/root\/.pyenv\/versions\/'"$BASE_PYTHON_VERSION"'\/envs\/rucio-py'"$BASE_PYTHON_VERSION"'\/bin\/python'"${BASE_PYTHON_VERSION%*.*}"'/c\#!\/bin\/bash\n\# -*- coding: utf-8 -*-\n\"exec\" \"$RUCIO_PYTHONBIN\" \"-u\" \"-Wignore\" \"$0\" \"$@\"\n' bin/register-python-argcomplete
+# Modify the shebang lines of the copied scripts to use the correct Python interpreter
+for script in bin/rucio bin/rucio-admin bin/register-python-argcomplete; do
+  sed -i '1c\
+#!/bin/bash\n\
+# -*- coding: utf-8 -*-\n\
+"exec" "$RUCIO_PYTHONBIN" "-u" "-Wignore" "$0" "$@"\n' "$script"
+done
+
 
 echo "General: Copying setup script"
 # Copy the setup script into the package
