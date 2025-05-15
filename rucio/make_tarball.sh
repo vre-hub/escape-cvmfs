@@ -77,7 +77,7 @@ done
 
 echo "General: Copying setup script"
 # Copy the setup script into the package
-cp -r ../rucio/common/setup_scripts/setup.* .
+cp -r ../rucio/common/setup_scripts/setup* .
 
 echo "General: Creating archive"
 # Create a tarball of the Rucio clients

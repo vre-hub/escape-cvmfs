@@ -51,7 +51,7 @@ if [ -z $RUCIO_HOME ]; then
         export RUCIO_HOME="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
     fi
     if [ $donkey_deb -gt 0 ]; then
-        \echo "RUCIO_HOME env is not set. Set it to $RUCIO_HOME"
+        \echo "INFO: \t RUCIO_HOME env is not set. Setting it to $RUCIO_HOME"
     fi    
 fi
 
@@ -67,23 +67,24 @@ if [ $? -ne 0 ]; then
         if [ "$donkey_tmpVal" = "3" ]; then
             export RUCIO_PYTHONBIN="python"
         else
-            \echo "Error: python version 3 is unavailable"
+            \echo "ERROR: \t python version 3 is unavailable"
             return 64	    
         fi	     
     else
-        \echo "Error: $RUCIO_PYTHONBIN is not found in PATH"
+        \echo "ERROR: \t $RUCIO_PYTHONBIN is not found in PATH"
         return 64
     fi
 fi
 
-donkey_tmpVal=`command -v $RUCIO_PYTHONBIN`
+donkey_tmpVal=$(command -v "$RUCIO_PYTHONBIN")
 if [[ $? -eq 0 ]] && [[ -e "$donkey_tmpVal" ]]; then
-    RUCIO_PYTHONBINPATH=`which $RUCIO_PYTHONBIN`
-    export RUCIO_PYTHONBINPATH=`readlink -f $RUCIO_PYTHONBINPATH`
+    RUCIO_PYTHONBINPATH=$(which "$RUCIO_PYTHONBIN")
+    export RUCIO_PYTHONBINPATH=$(readlink -f "$RUCIO_PYTHONBINPATH")
 else
-    \echo "ERROR: $RUCIO_PYTHONBIN does not seem to exist as a file'; unable to use as interpretor"
-    return 64
+    echo "ERROR: $RUCIO_PYTHONBIN does not seem to exist as a file; unable to use as interpreter"
+    exit 64
 fi
+
 
 donkey_thisPythonVersion=`$RUCIO_PYTHONBIN -V 2>&1 | \awk '{print $2}'`
 donkey_thisPythonVersionMajor=`\echo $donkey_thisPythonVersion | \cut -d "." -f 1`
@@ -91,7 +92,7 @@ donkey_thisPythonVersionMinor=`\echo $donkey_thisPythonVersion | \cut -d "." -f 
 let thisPythonVersionInt=`expr $donkey_thisPythonVersionMajor \* 10000 + $donkey_thisPythonVersionMinor \* 100`
 # need python >= 2.7 for python 2
 if [[ "$donkey_thisPythonVersionMajor" = "2" ]] && [[ $thisPythonVersionInt -lt 20700 ]]; then
-    \echo "Error: Your python version is $donkey_thisPythonVersion; we need 2.7 or newer."
+    \echo "ERROR: \t Your python version is $donkey_thisPythonVersion; we need 2.7 or newer."
     return 64
 fi
 donkey_thisPyVer=`\echo $donkey_thisPythonVersion | \cut -d "." -f 1-2`
@@ -100,7 +101,7 @@ donkey_thisPyVer=`\echo $donkey_thisPythonVersion | \cut -d "." -f 1-2`
 donkey_glv="`getconf GNU_LIBC_VERSION 2>&1 | \awk '{print $NF}' | \awk -F. '{printf "%d%02d", $1, $2}'`"
 if [ $donkey_glv -le 205 ]; then
     donkey_slcVer="slc5"
-    \echo "Error: $donkey_slcVer detected.  This is no longer supported."
+    \echo "ERROR: \t $donkey_slcVer detected.  This is no longer supported."
     return 64
 elif [ $donkey_glv -le 216 ]; then
     donkey_slcVer="slc6"
@@ -112,7 +113,7 @@ else
     donkey_slcVer="el9"
 fi
 if [ $donkey_deb -gt 0 ]; then
-    \echo "Info: Setting compatibility to $donkey_slcVer"
+    \echo "INFO: \t  Setting compatibility to $donkey_slcVer"
 fi
 
 # get rucio python path
@@ -120,7 +121,7 @@ donkey_rucioPyPath=`\find $RUCIO_HOME/lib -mindepth 2 -maxdepth 2 -name site-pac
 if [ "$donkey_rucioPyPath" = "" ]; then
     donkey_rucioPyPath=`\find $RUCIO_HOME/lib -mindepth 2 -maxdepth 2 -name site-packages | \grep -e "python$donkey_thisPythonVersionMajor" | \tail -n 1`
     if [ "$donkey_rucioPyPath" = "" ]; then
-        \echo "Error: Unable to determine rucio python path"
+        \echo "ERROR: \t  Unable to determine rucio python path"
         return 64
     fi
 fi
@@ -140,7 +141,7 @@ fi
 if [[ -z $RUCIO_AUTH_TYPE ]]; then
    export RUCIO_AUTH_TYPE="x509_proxy"
    if [ $donkey_deb -gt 0 ]; then
-       \echo "Info: Set RUCIO_AUTH_TYPE to x509_proxy"
+       \echo "INFO: \t  Set RUCIO_AUTH_TYPE to x509_proxy"
    fi
 fi
 
@@ -173,7 +174,7 @@ if [[ -z $RUCIO_ACCOUNT ]]; then
             donkey_counter=`expr $donkey_counter + 1`
             if [ "$donkey_counter" -eq 3 ]; then
                 if [ $donkey_deb -gt 0 ]; then
-                    \echo "Info: Max. tries reached."
+                    \echo "INFO: \t  Max. tries reached."
                 fi
                 export RUCIO_ACCOUNT=$USER
                 break;
@@ -184,7 +185,7 @@ if [[ -z $RUCIO_ACCOUNT ]]; then
     fi
     
     if [ $donkey_deb -gt 0 ]; then
-        \echo "Info: Set RUCIO_ACCOUNT to $RUCIO_ACCOUNT"
+        \echo "INFO: \t  Set RUCIO_ACCOUNT to $RUCIO_ACCOUNT"
     fi
 fi
 
