@@ -4,7 +4,6 @@ on:
   push:
     branches: [ main ]
     paths:
-      - '.github/workflows/build-rucio-tarball.yml'  # Replace with actual file name if different
       - 'rucio/**'
 
 jobs:
