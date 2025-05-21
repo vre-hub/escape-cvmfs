@@ -1,0 +1,14 @@
+jupyterlab>4,<5
+notebook<7
+peewee
+jsonschema
+psutil
+prometheus_client
+traitlets
+pylint
+pyjwt
+rucio-clients==34.6.0
+# pytest
+# pytest-mock
+# pytest-jupyter
+# requests-mock
