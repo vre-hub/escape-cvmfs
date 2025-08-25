@@ -8,7 +8,7 @@
 #
 # Authors:
 # - Giovanni Guerrieri, <giovanin.guerrieri@cern.ch>, 2025
-# - Enrique Garcia, <enrique.garcia.garcia@cern.ch>, 2025
+# - Enrique Garcia Garcia, <enrique.garcia.garcia@cern.ch>, 2025
 
 # Define Rucio and Python versions
 RUCIO_EXT_VERSION=1.3.1
