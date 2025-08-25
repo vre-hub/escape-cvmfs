@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # Usage:
-#   ./deploy_rucio.sh <GITHUB_TOKEN> <ARTIFACT_ID>
+#   ./rucio-cvmfs-updater.sh <GITHUB_TOKEN> <ARTIFACT_ID> <RUCIO_VERSION>
 # or set environment variables:
-#   TOKEN=... ID=... ./deploy_rucio.sh
+#   TOKEN=... ID=... RUCIO_VERSION=... ./deploy_rucio.sh
 
 set -e  # Exit on error
 set -u  # Treat unset variables as errors
@@ -11,17 +11,18 @@ set -u  # Treat unset variables as errors
 # Input arguments or environment variables
 TOKEN="${1:-${TOKEN:-}}"
 ID="${2:-${ID:-}}"
+RUCIO_VERSION="${3:-${RUCIO_VERSION:-35.8.0}}"
 
-if [[ -z "$TOKEN" || -z "$ID" ]]; then
+if [[ -z "$TOKEN" || -z "$ID"  ]]; then
   echo "Error: TOKEN and ID must be provided either as arguments or environment variables."
-  echo "Usage: $0 <GITHUB_TOKEN> <ARTIFACT_ID>"
+  echo "Usage: $0 <GITHUB_TOKEN> <ARTIFACT_ID> [RUCIO_VERSION]"
   exit 1
 fi
 
 REPO_URL="https://api.github.com/repos/vre-hub/cvmfs/actions/artifacts/${ID}/zip"
 MOUNTPOINT="/cvmfs/sw.escape.eu"
-PACKAGE_NAME="rucio-clients-34.6.0.tar.gz"
-TARGET_DIR="rucio/34.6.0"
+PACKAGE_NAME="rucio-clients-${RUCIO_VERSION}.tar.gz"
+TARGET_DIR="rucio/${RUCIO_VERSION}"
 
 echo "Starting CVMFS transaction..."
 cvmfs_server transaction sw.escape.eu
@@ -38,8 +39,8 @@ curl -L \
 echo "Unzipping artifact..."
 unzip artifact.zip
 
-echo "Cleaning old rucio directory if exists..."
-rm -rf rucio
+echo "Cleaning old versions of the rucio ${RUCIO_VERSION} directory if they exists..."
+rm -rf "$TARGET_DIR" || true
 
 echo "Creating target directory..."
 mkdir -p "$TARGET_DIR"

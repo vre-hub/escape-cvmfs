@@ -10,7 +10,7 @@
 # - Giovanni Guerrieri, <giovanin.guerrieri@cern.ch>, 2025
 
 # Define Rucio and Python versions
-RUCIO_VERSION=34.6.0
+RUCIO_VERSION=35.8.0
 BASE_PYTHON_VERSION=3.11.8
 PYTHON_VERSIONS=("3.11.8") # space-separated list of python versions
 
