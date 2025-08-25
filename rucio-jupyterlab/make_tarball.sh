@@ -32,7 +32,8 @@ run_install () {
   echo "$1: Installing dependencies"
   pip install pip --upgrade  # Upgrade pip
   pip install -U setuptools  # Upgrade setuptools
-  pip install -r ../common/requirements-rucio-jupyterlab.txt  # Install Rucio jlab dependencies - script run inside cd $RUCIO_EXT_VERSION
+  pip install rucio-jupyterlab=="$RUCIO_EXT_VERSION"  # Install Rucio jlab - script run inside cd $RUCIO_EXT_VERSION
+  pip install rucio-clients=="$RUCIO_CLIENTS_VERSION"
   pip install argcomplete  # Install argcomplete dependency separately
   pip freeze  # Display installed packages
 
