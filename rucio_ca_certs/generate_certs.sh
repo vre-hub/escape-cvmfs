@@ -23,14 +23,14 @@ curl -fsSL 'https://cafiles.cern.ch/cafiles/certificates/CERN%20Certification%20
 echo "General: Creating the bundle cert file"
 
 cat cernrootca2.crt >> rucio_ca.pem 
-cat cerngridca.crt >> rucio_ca.pem \
-cat cernca.crt >> rucio_ca.pem \
+cat cerngridca.crt >> rucio_ca.pem 
+cat cernca.crt >> rucio_ca.pem 
 
 echo "General: Removing tmp files"
 
 rm *.crt
 
-echo "INFO: This is a bundle certificates file. You can add it to the `/etc/ssl/certs/` directory"
+echo "INFO: This is a bundle certificates file. You can add it to the '/etc/ssl/certs/' directory"
 
 echo "General: DONE!"
 # Provide the command to upload the tarball to a remote server
