@@ -11,7 +11,7 @@ set -u  # Treat unset variables as errors
 # Input arguments or environment variables
 TOKEN="${1:-${TOKEN:-}}"
 ID="${2:-${ID:-}}"
-RUCIO_VERSION="${3:-${RUCIO_VERSION:-}}"
+RUCIO_VERSION="${3:-${RUCIO_VERSION:-35.8.0}}"
 
 if [[ -z "$TOKEN" || -z "$ID"  || -z "$RUCIO_VERSION"  ]]; then
   echo "Error: TOKEN, ID and RUCIO_VERSION must be provided either as arguments or environment variables."
