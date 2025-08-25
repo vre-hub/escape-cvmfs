@@ -41,7 +41,7 @@ jobs:
         python --version
 
         # Make build script executable and run it
-        chmod +x rucio-jlab-deps/make_tarball.sh
+        chmod +x ./rucio-jupyterlab/make_tarball.sh
         ./rucio-jupyterlab/make_tarball.sh
 
     - name: Upload tarball artifact
