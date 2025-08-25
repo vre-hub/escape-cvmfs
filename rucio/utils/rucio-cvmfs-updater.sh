@@ -13,9 +13,9 @@ TOKEN="${1:-${TOKEN:-}}"
 ID="${2:-${ID:-}}"
 RUCIO_VERSION="${3:-${RUCIO_VERSION:-35.8.0}}"
 
-if [[ -z "$TOKEN" || -z "$ID"  || -z "$RUCIO_VERSION"  ]]; then
-  echo "Error: TOKEN, ID and RUCIO_VERSION must be provided either as arguments or environment variables."
-  echo "Usage: $0 <GITHUB_TOKEN> <ARTIFACT_ID> <RUCIO_VERSION>"
+if [[ -z "$TOKEN" || -z "$ID"  ]]; then
+  echo "Error: TOKEN and ID must be provided either as arguments or environment variables."
+  echo "Usage: $0 <GITHUB_TOKEN> <ARTIFACT_ID> [RUCIO_VERSION]"
   exit 1
 fi
 
