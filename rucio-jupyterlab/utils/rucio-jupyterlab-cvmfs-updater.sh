@@ -11,7 +11,7 @@ set -u  # Treat unset variables as errors
 # Input arguments or environment variables
 TOKEN="${1:-${TOKEN:-}}"
 ID="${2:-${ID:-}}"
-VERSION="${3:-${VERSION:-1.2.0}}" # Set's up default version if no 3rd argument is passed
+VERSION="${3:-${VERSION:-1.3.1}}" # Set's up default version if no 3rd argument is passed
 
 if [[ -z "$TOKEN" || -z "$ID" ]]; then
   echo "Error: TOKEN and ID must be provided either as arguments or environment variables."

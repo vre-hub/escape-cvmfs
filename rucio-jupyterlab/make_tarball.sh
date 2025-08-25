@@ -12,6 +12,7 @@
 
 # Define Rucio and Python versions
 RUCIO_EXT_VERSION=1.3.1
+RUCIO_CLIENTS_VERSION=35.8.0
 BASE_PYTHON_VERSION=3.11.8
 PYTHON_VERSIONS=("3.11.8") # space-separated list of python versions
 

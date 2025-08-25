@@ -62,4 +62,4 @@ if [ "$shell_type" = "bash" ]; then
     eval "$(register-python-argcomplete rucio-admin 2>/dev/null)"
 fi
 
-echo "INFO: Rucio client and Jupyterlab extension environment is set up."
+echo "INFO: Finished setting up Rucio clients and Jupyterlab extension environment."
