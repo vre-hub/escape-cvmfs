@@ -4,7 +4,8 @@ This script creates the following files, needed to configure the Rucio JupyterLa
   * `~/.jupyter/jupyter_server_config.json`
   * `~/.ipython/profile_default/ipython_kernel_config.json`
 
-The file must live in `/cvmfs/sw.escape.eu/etc/jupyter/jupyter_server_config.py`. It is used 
+The file must be located in `/cvmfs/sw.escape.eu/etc/jupyter/jupyter_server_config.py`, see 
+[swan-cern/jupyter-images#230](https://github.com/swan-cern/jupyter-images/pull/230) for more information. It is used 
 during the building phase of the [SWAN image](https://github.com/swan-cern/jupyter-images/blob/main/swan/scripts/before-notebook.d/01_rucio.sh) containing the Rucio extension.
 
 ## Upload and/or update the file within the sw.escape.eu cvmfs repository
