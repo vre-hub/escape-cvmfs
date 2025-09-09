@@ -2,7 +2,7 @@
 
 ESCAPE Rucio Instance CA generation certificates script.
 
-You should be able to find the `rucio_ca.pem` file within the `/cvmfs/sw.escape.sw/etc/ssl/certs/` directory.
+The `rucio_ca.pem` file should be located in the `/cvmfs/sw.escape.sw/etc/ssl/certs/` directory.
 
 ## Certificate generation
 
