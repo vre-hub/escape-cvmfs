@@ -70,7 +70,7 @@ if use_rucio_extension:
             "rucio_base_url": os.getenv('FCC_RUCIO_BASE_URL', 'https://fcc-server.rucioit.cern.ch'),
             "rucio_auth_url": os.getenv('FCC_RUCIO_AUTH_URL', 'https://fcc-auth.rucioit.cern.ch'),
             "rucio_webui_url": os.getenv('FCC_RUCIO_WEBUI_URL', 'https://fcc-webui.rucioit.cern.ch'),
-            "rucio_ca_cert": os.getenv('RUCIO_CA_CERT', '/eos/user/e/engarcia/rucio_ca_certs/rucio_ca.pem'),
+            "rucio_ca_cert": "/cvmfs/sw.escape.eu/etc/ssl/certs/tls-ca-bundle.pem",
             "site_name": os.getenv('FCC_RUCIO_SITE_NAME', 'CERN'),
             "vo": os.getenv('FCC_RUCIO_VO', 'fcc'),
             "voms_enabled": os.getenv('RUCIO_VOMS_ENABLED', '0') == '1',
