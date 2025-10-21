@@ -11,10 +11,10 @@
 # - Enrique Garcia Garcia, <enrique.garcia.garcia@cern.ch>, 2025
 
 # Define Rucio and Python versions
-RUCIO_EXT_VERSION=1.3.1
+RUCIO_EXT_VERSION=1.4.0
 RUCIO_CLIENTS_VERSION=35.8.0
 BASE_PYTHON_VERSION=3.11.8
-PYTHON_VERSIONS=("3.11.8") # space-separated list of python versions
+PYTHON_VERSIONS=("3.11.8" "3.12.2") # space-separated list of python versions
 
 # Set locale settings
 export LANG=en_US.UTF-8
@@ -24,6 +24,7 @@ export LC_ALL=en_US.UTF-8
 run_install () {
   echo "$1: Loading virtual environment" 
   export RUCIO_EXT_VERSION=$RUCIO_EXT_VERSION
+  pyenv install --force $1  # Ensure the specified Python version is installed
   pyenv virtualenv --force $1 rucio-jlab-ext-py$1  # Create or overwrite virtual environment
   pyenv local rucio-jlab-ext-py$1  # Set the local Python version
   python --version  # Display the Python version
