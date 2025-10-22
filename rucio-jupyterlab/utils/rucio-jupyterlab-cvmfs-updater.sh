@@ -21,7 +21,7 @@ fi
 
 REPO_URL="https://api.github.com/repos/vre-hub/escape-cvmfs/actions/artifacts/${ID}/zip"
 MOUNTPOINT="/cvmfs/sw.escape.eu"
-PACKAGE_NAME="rucio-jypterlab-${VERSION}.tar.gz"
+PACKAGE_NAME="rucio-jupyterlab-${VERSION}.tar.gz"
 TARGET_DIR="rucio-jupyterlab/${VERSION}"
 
 echo "Starting CVMFS transaction..."
