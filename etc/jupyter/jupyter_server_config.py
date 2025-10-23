@@ -30,11 +30,11 @@ def write_jupyterlab_config():
         "vo": os.getenv('RUCIO_VO', 'escape'),
         "voms_enabled": os.getenv('RUCIO_VOMS_ENABLED', '0') == '1',
         "voms_vomses_path": os.getenv('RUCIO_VOMS_VOMSES_PATH', '/etc/vomses'),
-        "voms_certdir_path": os.getenv('RUCIO_VOMS_CERTDIR_PATH',),
+        "voms_certdir_path": os.getenv('RUCIO_VOMS_CERTDIR_PATH', '/etc/grid-security/vomsdir'),
         "voms_vomsdir_path": os.getenv('RUCIO_VOMS_VOMSDIR_PATH', '/etc/grid-security/vomsdir'),
         "destination_rse": os.getenv('RUCIO_DESTINATION_RSE', 'CERN-EOSPILOT'),
         "rse_mount_path": os.getenv('RUCIO_RSE_MOUNT_PATH', '/eos/eulake'),
-        "replication_rule_lifetime_days": int(os.getenv('RUCIO_REPLICATION_RULE_LIFETIME_DAYS')) if os.getenv('RUCIO_REPLICATION_RULE_LIFETIME_DAYS') else None,
+        "replication_rule_lifetime_days": int(os.getenv('RUCIO_REPLICATION_RULE_LIFETIME_DAYS')) if os.getenv('RUCIO_REPLICATION_RULE_LIFETIME_DAYS') else 1,
         "path_begins_at": int(os.getenv('RUCIO_PATH_BEGINS_AT', '5')),
         "mode": os.getenv('RUCIO_MODE', 'replica'),
         "wildcard_enabled": os.getenv('RUCIO_WILDCARD_ENABLED', '1') == '1',
@@ -53,11 +53,11 @@ def write_jupyterlab_config():
         "vo": os.getenv('ATLAS_RUCIO_VO', 'atlas'),
         "voms_enabled": os.getenv('RUCIO_VOMS_ENABLED', '0') == '1',
         "voms_vomses_path": os.getenv('RUCIO_VOMS_VOMSES_PATH', '/etc/vomses'),
-        "voms_certdir_path": os.getenv('RUCIO_VOMS_CERTDIR_PATH',),
+        "voms_certdir_path": os.getenv('RUCIO_VOMS_CERTDIR_PATH', '/etc/grid-security/vomsdir'),
         "voms_vomsdir_path": os.getenv('RUCIO_VOMS_VOMSDIR_PATH', '/etc/grid-security/vomsdir'),
         "destination_rse": os.getenv('ATLAS_RUCIO_DESTINATION_RSE', 'CERN-PROD_PHYS-TOP'),
         "rse_mount_path": os.getenv('ATLAS_RUCIO_RSE_MOUNT_PATH', '/eos/atlas/atlasgroupdisk/phys-top'),
-        "replication_rule_lifetime_days": int(os.getenv('ATLAS_RUCIO_REPLICATION_RULE_LIFETIME_DAYS')) if os.getenv('ATLAS_RUCIO_REPLICATION_RULE_LIFETIME_DAYS') else None,
+        "replication_rule_lifetime_days": int(os.getenv('ATLAS_RUCIO_REPLICATION_RULE_LIFETIME_DAYS')) if os.getenv('ATLAS_RUCIO_REPLICATION_RULE_LIFETIME_DAYS') else 1,
         "path_begins_at": int(os.getenv('ATLAS_RUCIO_PATH_BEGINS_AT', '4')),
         "mode": os.getenv('ATLAS_RUCIO_MODE', 'replica'),
         "wildcard_enabled": os.getenv('ATLAS_RUCIO_WILDCARD_ENABLED', '1') == '1',
@@ -73,11 +73,11 @@ def write_jupyterlab_config():
         "vo": os.getenv('FCC_RUCIO_VO', 'fcc'),
         "voms_enabled": os.getenv('RUCIO_VOMS_ENABLED', '0') == '1',
         "voms_vomses_path": os.getenv('RUCIO_VOMS_VOMSES_PATH', '/etc/vomses'),
-        "voms_certdir_path": os.getenv('RUCIO_VOMS_CERTDIR_PATH',),
+        "voms_certdir_path": os.getenv('RUCIO_VOMS_CERTDIR_PATH', '/etc/grid-security/vomsdir'),
         "voms_vomsdir_path": os.getenv('RUCIO_VOMS_VOMSDIR_PATH', '/etc/grid-security/vomsdir'),
         "destination_rse": os.getenv('FCC_RUCIO_DESTINATION_RSE', 'FCC_PROD_PHYS_TOP'),
         "rse_mount_path": os.getenv('FCC_RUCIO_RSE_MOUNT_PATH', '/eos/workspace/r/rucioit/FCC_PROD_PHYS_TOP'),
-        "replication_rule_lifetime_days": int(os.getenv('FCC_RUCIO_REPLICATION_RULE_LIFETIME_DAYS')) if os.getenv('FCC_RUCIO_REPLICATION_RULE_LIFETIME_DAYS') else None,
+        "replication_rule_lifetime_days": int(os.getenv('FCC_RUCIO_REPLICATION_RULE_LIFETIME_DAYS')) if os.getenv('FCC_RUCIO_REPLICATION_RULE_LIFETIME_DAYS') else 1,
         "path_begins_at": int(os.getenv('FCC_RUCIO_PATH_BEGINS_AT', '5')),
         "mode": os.getenv('FCC_RUCIO_MODE', 'replica'),
         "wildcard_enabled": os.getenv('FCC_RUCIO_WILDCARD_ENABLED', '1') == '1',
@@ -90,7 +90,7 @@ def write_jupyterlab_config():
     swan_instance = os.getenv('SWAN_RUCIO_INSTANCE', '').lower()
     swan_rse = os.getenv('SWAN_RUCIO_RSE')
     swan_rse_path = os.getenv('SWAN_RUCIO_RSE_PATH')
-    swan_path_number = os.getenv('SWAN_RUCIO_RSE_PATH_NUMBER')
+    swan_path_number = os.getenv('SWAN_RUCIO_RSE_PATH_BEGINS_AT')
 
     # Apply overrides to selected instance
     if swan_instance in configs:
