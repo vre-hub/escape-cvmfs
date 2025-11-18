@@ -18,6 +18,8 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # Define environment and Python versions
 ATLASOPENMAGIC_VERSION=analysis-2025.11
 BASE_PYTHON_VERSION=3.11.9
@@ -109,8 +111,9 @@ for dep in "${EXTERNAL_DEPENDENCIES[@]}"; do
 done
 
 # Prepare workspace
-mkdir -p "$ATLASOPENMAGIC_VERSION"
-cd "$ATLASOPENMAGIC_VERSION"
+BUILD_ROOT="$SCRIPT_DIR/$ATLASOPENMAGIC_VERSION"
+mkdir -p "$BUILD_ROOT"
+cd "$BUILD_ROOT"
 mkdir -p lib
 
 # Install for each Python version
@@ -124,10 +127,12 @@ mkdir -p bin
 cp -R "$(pyenv virtualenv-prefix)/envs/${EXPORT_ENV_NAME}-py${BASE_PYTHON_VERSION}/bin/." bin/
 
 echo "General: Cleaning bin/"
-if [ -f ../common/rm_from_bin_folder.txt ]; then
+if [ -f "$SCRIPT_DIR/common/rm_from_bin_folder.txt" ]; then
+  echo " - $(cat $SCRIPT_DIR/common/rm_from_bin_folder.txt)"
   while IFS= read -r file; do
+    echo " - $file"
     rm -f "bin/$file"
-  done < ../common/rm_from_bin_folder.txt
+  done < "$SCRIPT_DIR/common/rm_from_bin_folder.txt"
 fi
 
 echo "General: Adapting bin scripts"
@@ -145,10 +150,11 @@ for script in bin/*; do
 done
 
 echo "General: Copying setup script"
-cp -R ../common/setup_scripts/setup* .
+cp -R "$SCRIPT_DIR"/common/setup_scripts/setup* .
 
 echo "General: Creating archive"
-tar zcf ../atlasopenmagic-${ATLASOPENMAGIC_VERSION}.tar.gz *
+tar zcf "$SCRIPT_DIR"/atlasopenmagic-${ATLASOPENMAGIC_VERSION}.tar.gz *
+echo " - $(ls -la "$SCRIPT_DIR"/atlasopenmagic-${ATLASOPENMAGIC_VERSION}.tar.gz)"
 
 echo "General: DONE!"
 
