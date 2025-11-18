@@ -1,0 +1,15 @@
+activate
+activate.fish
+pip
+pip3.11
+python
+python3.11
+python3-config
+activate.csh
+Activate.ps1
+pip3
+pydoc
+python3
+python3.11-config
+python-config
+
