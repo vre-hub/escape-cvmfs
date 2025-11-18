@@ -11,7 +11,7 @@
 # - Enrique Garcia Garcia, <enrique.garcia.garcia@cern.ch>, 2025
 
 # Define Rucio and Python versions
-RUCIO_EXT_VERSION=1.4.0
+RUCIO_EXT_VERSION=1.4.1
 RUCIO_CLIENTS_VERSION=35.8.0
 BASE_PYTHON_VERSION=3.11.8
 PYTHON_VERSIONS=("3.11.8" "3.12.2") # space-separated list of python versions
@@ -33,7 +33,8 @@ run_install () {
   echo "$1: Installing dependencies"
   pip install pip --upgrade  # Upgrade pip
   pip install -U setuptools  # Upgrade setuptools
-  pip install rucio-jupyterlab=="$RUCIO_EXT_VERSION"  # Install Rucio jlab - script run inside cd $RUCIO_EXT_VERSION
+  # pip install rucio-jupyterlab=="$RUCIO_EXT_VERSION"  # Install Rucio jlab - script run inside cd $RUCIO_EXT_VERSION
+  pip install git+https://github.com/Soap2G/jupyterlab-extension@gguerrie-cache-fix
   pip install rucio-clients=="$RUCIO_CLIENTS_VERSION"
   pip install argcomplete  # Install argcomplete dependency separately
   pip freeze  # Display installed packages

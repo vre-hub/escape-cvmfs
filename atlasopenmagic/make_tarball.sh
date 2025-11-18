@@ -23,7 +23,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Define environment and Python versions
 ATLASOPENMAGIC_VERSION=analysis-2025.11
 BASE_PYTHON_VERSION=3.11.9
-PYTHON_VERSIONS=("3.11.8" "3.12.2")
+PYTHON_VERSIONS=("3.11.9" "3.12.2")
 
 EXPORT_ENV_NAME=atlasopenmagic
 
