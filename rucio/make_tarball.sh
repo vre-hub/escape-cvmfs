@@ -12,7 +12,7 @@
 # Define Rucio and Python versions
 RUCIO_VERSION=34.6.0
 BASE_PYTHON_VERSION=3.11.9
-PYTHON_VERSIONS=("3.11.8","3.11.9") # space-separated list of python versions
+PYTHON_VERSIONS=("3.11.8" "3.11.9") # space-separated list of python versions
 
 # Set locale settings
 export LANG=en_US.UTF-8
