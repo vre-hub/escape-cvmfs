@@ -1,0 +1,68 @@
+name: Build Lumi Binary
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'lumi/**'
+  workflow_dispatch:
+    inputs:
+      opencode_ref:
+        description: 'Git ref to build from (tag, branch, or commit)'
+        required: false
+        default: 'dev'
+
+jobs:
+  build-binary:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout cvmfs repo
+        uses: actions/checkout@v4
+
+      - name: Checkout opencode source
+        uses: actions/checkout@v4
+        with:
+          repository: Soap2G/opencode
+          ref: ${{ github.event.inputs.opencode_ref || 'dev' }}
+          path: opencode-src
+
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.11'
+
+      - name: Install dependencies (from repo root — resolves workspace packages)
+        working-directory: opencode-src
+        run: bun install
+
+      - name: Build binary (linux-x64)
+        working-directory: opencode-src/packages/opencode
+        run: bun run build --single
+
+      - name: Stage CVMFS directory
+        run: |
+          VERSION=$(node -e "console.log(require('./opencode-src/packages/opencode/package.json').version)")
+          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
+
+          BINARY=$(find opencode-src/packages/opencode/dist -name "opencode" -type f ! -name "*.exe" | head -1)
+          mkdir -p staging/bin
+
+          cp "$BINARY" staging/bin/opencode
+          chmod +x staging/bin/opencode
+          ln -sf opencode staging/bin/lumi
+          echo "$VERSION" > staging/VERSION
+
+          # Verify
+          ./staging/bin/opencode --version
+
+      - name: Create tarball
+        run: |
+          cd staging
+          tar -czf "../lumi-${VERSION}.tar.gz" *
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lumi
+          path: lumi-*.tar.gz

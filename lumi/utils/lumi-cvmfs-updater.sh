@@ -1,17 +1,17 @@
 #!/bin/bash
 #
-# lumi-cvmfs-updater.sh — Download a lumi release and publish to CVMFS
+# lumi-cvmfs-updater.sh — Deploy a lumi binary to CVMFS
 #
 # Usage:
-#   ./lumi-cvmfs-updater.sh [-f|--force] <VERSION>
+#   ./lumi-cvmfs-updater.sh [-f|--force] <GITHUB_TOKEN> <ARTIFACT_ID> [VERSION]
+#   OPENCODE_REPO=/path/to/opencode ./lumi-cvmfs-updater.sh [-f|--force] [VERSION]
+#
+# Modes:
+#   1. GitHub artifact: provide TOKEN + ARTIFACT_ID (from build_lumi_binary workflow)
+#   2. Local build:     set OPENCODE_REPO env var (must run `bun install` from repo root first)
 #
 # Options:
 #   -f, --force    Replace existing version if it exists
-#
-# This script:
-#   1. Builds lumi from the opencode repo (or downloads a pre-built binary)
-#   2. Stages the versioned directory with setup.sh and symlinks
-#   3. Publishes to /cvmfs/sw.escape.eu/lumi/
 #
 # Mirrors the pattern used by atlasopenmagic/ and rucio/ in this repo.
 #
@@ -32,29 +32,26 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-VERSION="${1:-}"
-if [[ -z "$VERSION" ]]; then
-  echo "Error: VERSION must be provided."
-  echo "Usage: $0 [-f|--force] <VERSION>"
-  echo "Example: $0 1.3.15"
-  exit 1
-fi
-
 MOUNTPOINT="/cvmfs/sw.escape.eu"
-TARGET_DIR="lumi/${VERSION}"
-LATEST_LINK="lumi/latest"
+REPO_URL_BASE="https://api.github.com/repos/vre-hub/escape-cvmfs/actions/artifacts"
 
 # ---------------------------------------------------------------------------
-# Build or download the binary
+# Determine mode and parse arguments
 # ---------------------------------------------------------------------------
-# Option 1: Build from local repo (if OPENCODE_REPO is set)
-# Option 2: Download from GitHub releases
-BINARY=""
 TMPDIR="$(mktemp -d)"
 trap 'rm -rf "$TMPDIR"' EXIT
 
 if [[ -n "${OPENCODE_REPO:-}" ]]; then
+  # --- Mode: local build ---
+  VERSION="${1:-}"
+  if [[ -z "$VERSION" ]]; then
+    VERSION=$(node -e "console.log(require('${OPENCODE_REPO}/packages/opencode/package.json').version)")
+    echo "Auto-detected version: ${VERSION}"
+  fi
+
   echo "Building lumi from ${OPENCODE_REPO}..."
+  echo "  (Reminder: run 'bun install' from the repo root if you haven't already)"
+
   cd "${OPENCODE_REPO}/packages/opencode"
   bun run build --single
   BINARY=$(find dist -name "opencode" -type f ! -name "*.exe" | head -1)
@@ -63,36 +60,72 @@ if [[ -n "${OPENCODE_REPO:-}" ]]; then
     exit 1
   fi
   BINARY="$(cd "$(dirname "$BINARY")" && pwd)/$(basename "$BINARY")"
-  cd -
-else
-  echo "Downloading lumi v${VERSION} from GitHub..."
-  # Determine platform
-  ARCH="$(uname -m)"
-  case "$ARCH" in
-    x86_64) ARCH="x64" ;;
-    aarch64|arm64) ARCH="arm64" ;;
-  esac
-  TARBALL="opencode-linux-${ARCH}.tar.gz"
-  RELEASE_URL="https://github.com/Soap2G/opencode/releases/download/v${VERSION}/${TARBALL}"
+  cd - >/dev/null
 
-  curl -fSL "$RELEASE_URL" -o "${TMPDIR}/${TARBALL}" || {
-    echo "ERROR: Failed to download ${RELEASE_URL}"
-    echo "Set OPENCODE_REPO=/path/to/opencode to build from source instead."
-    exit 1
-  }
-  tar -xzf "${TMPDIR}/${TARBALL}" -C "${TMPDIR}"
-  BINARY="${TMPDIR}/opencode"
-  if [[ ! -f "$BINARY" ]]; then
-    echo "ERROR: Binary not found in tarball"
+else
+  # --- Mode: GitHub artifact ---
+  TOKEN="${1:-${TOKEN:-}}"
+  ID="${2:-${ID:-}}"
+  VERSION="${3:-}"
+
+  if [[ -z "$TOKEN" || -z "$ID" ]]; then
+    echo "Error: provide either OPENCODE_REPO or TOKEN + ARTIFACT_ID."
+    echo ""
+    echo "Usage:"
+    echo "  GitHub artifact:  $0 [-f] <GITHUB_TOKEN> <ARTIFACT_ID> [VERSION]"
+    echo "  Local build:      OPENCODE_REPO=/path/to/opencode $0 [-f] [VERSION]"
     exit 1
   fi
+
+  echo "Downloading GitHub artifact ${ID}..."
+  curl -Ls \
+    -H "Accept: application/vnd.github+json" \
+    -H "Authorization: Bearer ${TOKEN}" \
+    -H "X-GitHub-Api-Version: 2022-11-28" \
+    "${REPO_URL_BASE}/${ID}/zip" -o "${TMPDIR}/artifact.zip"
+
+  cd "${TMPDIR}"
+  unzip -q artifact.zip
+
+  # The artifact contains a tarball like lumi-1.3.15.tar.gz
+  TARBALL=$(ls lumi-*.tar.gz 2>/dev/null | head -1)
+  if [[ -z "$TARBALL" ]]; then
+    echo "ERROR: No lumi-*.tar.gz found in artifact"
+    ls -la
+    exit 1
+  fi
+
+  # Extract version from tarball name if not provided
+  if [[ -z "$VERSION" ]]; then
+    VERSION=$(echo "$TARBALL" | sed 's/^lumi-//; s/\.tar\.gz$//')
+    echo "Auto-detected version from tarball: ${VERSION}"
+  fi
+
+  mkdir -p extracted
+  tar -xzf "$TARBALL" -C extracted
+
+  BINARY="${TMPDIR}/extracted/bin/opencode"
+  if [[ ! -f "$BINARY" ]]; then
+    # Fallback: binary might be at top level
+    BINARY=$(find "${TMPDIR}/extracted" -name "opencode" -type f ! -name "*.exe" | head -1)
+  fi
+  if [[ -z "$BINARY" || ! -f "$BINARY" ]]; then
+    echo "ERROR: Binary not found in tarball"
+    find "${TMPDIR}/extracted" -type f
+    exit 1
+  fi
+  cd - >/dev/null
 fi
 
 echo "Binary: ${BINARY}"
+echo "Version: ${VERSION}"
 
 # ---------------------------------------------------------------------------
 # Publish to CVMFS
 # ---------------------------------------------------------------------------
+TARGET_DIR="lumi/${VERSION}"
+LATEST_LINK="lumi/latest"
+
 echo "Starting CVMFS transaction..."
 cvmfs_server transaction sw.escape.eu
 
