@@ -144,6 +144,7 @@ fi
 
 echo "Creating ${TARGET_DIR}..."
 mkdir -p "${TARGET_DIR}/bin"
+mkdir -p "${TARGET_DIR}/etc/lumi"
 
 cp "$BINARY" "${TARGET_DIR}/bin/opencode"
 chmod +x "${TARGET_DIR}/bin/opencode"
@@ -152,13 +153,46 @@ ln -sf opencode "${TARGET_DIR}/bin/lumi"
 # Write version marker
 echo "${VERSION}" > "${TARGET_DIR}/VERSION"
 
+# Write default opencode.json config
+cat > "${TARGET_DIR}/etc/lumi/opencode.json" << 'CONFIG_EOF'
+{
+  "$schema": "https://opencode.ai/config.json",
+
+  "provider": {
+    "litellm": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "CERN LiteLLM Gateway",
+      "env": ["LITELLM_API_KEY"],
+      "options": {
+        "baseURL": "https://llmgw-litellm.web.cern.ch/v1"
+      },
+      "models": {
+        "hf-qwen25-32b": {
+          "name": "Qwen 2.5 32B (primary)",
+          "tool_call": true,
+          "limit": { "context": 128000, "output": 32768 }
+        },
+        "llama-3.1-8b-instruct": {
+          "name": "Llama 3.1 8B (fast)",
+          "tool_call": true,
+          "limit": { "context": 128000, "output": 8192 }
+        }
+      }
+    }
+  },
+
+  "model": "litellm/hf-qwen25-32b",
+  "small_model": "litellm/llama-3.1-8b-instruct"
+}
+CONFIG_EOF
+
 # Write setup.sh
 cat > "${TARGET_DIR}/bin/setup.sh" << 'SETUP_EOF'
 #!/usr/bin/env bash
 # Lumi setup script for CVMFS
 # Usage: source /cvmfs/sw.escape.eu/lumi/latest/bin/setup.sh
 
-_lumi_dir="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
+_lumi_dir="/cvmfs/sw.escape.eu/lumi/latest/bin"
 
 # Add lumi to PATH (idempotent)
 case ":${PATH}:" in
@@ -171,6 +205,9 @@ export LUMI_VERSION="$(cat "${_lumi_dir}/../VERSION" 2>/dev/null || echo unknown
 
 # Prevent opencode's built-in auto-update (we manage versions via CVMFS)
 export OPENCODE_DISABLE_AUTOUPDATE=1
+
+# Load shared config from CVMFS (user/project configs can override)
+export OPENCODE_CONFIG="${_lumi_dir}/../etc/lumi/opencode.json"
 
 # Load LiteLLM API key from per-user file if it exists
 if [ -z "${LITELLM_API_KEY:-}" ] && [ -f "$HOME/.lumi/litellm-key" ]; then
