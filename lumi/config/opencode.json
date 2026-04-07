@@ -1,0 +1,99 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+
+  "provider": {
+    "litellm": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "CERN LiteLLM Gateway",
+      "env": ["LITELLM_API_KEY"],
+      "options": {
+        "baseURL": "https://llmgw-litellm.web.cern.ch/v1"
+      },
+      "models": {
+        "qwen/qwen3-32b": {
+          "name": "Qwen 3 32B (primary coding)",
+          "tool_call": true,
+          "temperature": true,
+          "reasoning": true,
+          "attachment": false,
+          "release_date": "2025-06-01",
+          "limit": { "context": 32768, "output": 8192 }
+        },
+        "hf-qwen25-32b": {
+          "name": "Qwen 2.5 32B (CERN self-hosted)",
+          "tool_call": true,
+          "temperature": true,
+          "reasoning": false,
+          "attachment": false,
+          "release_date": "2025-01-01",
+          "limit": { "context": 32768, "output": 4096 }
+        },
+        "llama-3.1-8b-instruct": {
+          "name": "Llama 3.1 8B (fast/lightweight)",
+          "tool_call": true,
+          "temperature": true,
+          "reasoning": false,
+          "attachment": false,
+          "release_date": "2024-07-01",
+          "limit": { "context": 8192, "output": 2048 }
+        },
+        "devstral-small-latest": {
+          "name": "Devstral Small (Mistral coding)",
+          "tool_call": true,
+          "temperature": true,
+          "reasoning": false,
+          "attachment": false,
+          "release_date": "2025-05-01",
+          "limit": { "context": 131072, "output": 8192 }
+        },
+        "codestral-latest": {
+          "name": "Codestral (Mistral code generation)",
+          "tool_call": true,
+          "temperature": true,
+          "reasoning": false,
+          "attachment": false,
+          "release_date": "2025-01-01",
+          "limit": { "context": 131072, "output": 8192 }
+        },
+        "meta-llama/llama-4-scout-17b-16e-instruct": {
+          "name": "Llama 4 Scout 17B",
+          "tool_call": true,
+          "temperature": true,
+          "reasoning": false,
+          "attachment": false,
+          "release_date": "2025-04-01",
+          "limit": { "context": 131072, "output": 8192 }
+        }
+      }
+    }
+  },
+
+  "model": "litellm/devstral-small-latest",
+  "small_model": "litellm/llama-3.1-8b-instruct",
+
+  "mcp": {
+    "atlasopenmagic": {
+      "type": "remote",
+      "url": "https://atlasopenmagic-mcp.app.cern.ch/mcp",
+      "oauth": false
+    }
+  },
+
+  "permission": {
+    "bash": {
+      "*": "ask",
+      "git status*": "allow",
+      "git log*": "allow",
+      "git diff*": "allow",
+      "ls *": "allow",
+      "python *": "ask",
+      "root *": "ask",
+      "rucio *": "ask",
+      "eos *": "ask",
+      "rm *": "deny",
+      "rm -rf*": "deny"
+    },
+    "edit": "allow",
+    "webfetch": "allow"
+  }
+}

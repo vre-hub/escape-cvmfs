@@ -144,7 +144,6 @@ fi
 
 echo "Creating ${TARGET_DIR}..."
 mkdir -p "${TARGET_DIR}/bin"
-mkdir -p "${TARGET_DIR}/etc/lumi"
 
 cp "$BINARY" "${TARGET_DIR}/bin/opencode"
 chmod +x "${TARGET_DIR}/bin/opencode"
@@ -153,38 +152,23 @@ ln -sf opencode "${TARGET_DIR}/bin/lumi"
 # Write version marker
 echo "${VERSION}" > "${TARGET_DIR}/VERSION"
 
-# Write default opencode.json config
-cat > "${TARGET_DIR}/etc/lumi/opencode.json" << 'CONFIG_EOF'
-{
-  "$schema": "https://opencode.ai/config.json",
+# ---------------------------------------------------------------------------
+# Deploy shared config directory
+# ---------------------------------------------------------------------------
+# The config lives in the repo at lumi/config/ and is deployed to a
+# version-independent path so it can be updated without re-publishing
+# the binary.
+CONFIG_SRC="$(cd "$(dirname "$0")/../config" && pwd)"
+CONFIG_DST="etc/lumi"
 
-  "provider": {
-    "litellm": {
-      "npm": "@ai-sdk/openai-compatible",
-      "name": "CERN LiteLLM Gateway",
-      "env": ["LITELLM_API_KEY"],
-      "options": {
-        "baseURL": "https://llmgw-litellm.web.cern.ch/v1"
-      },
-      "models": {
-        "hf-qwen25-32b": {
-          "name": "Qwen 2.5 32B (primary)",
-          "tool_call": true,
-          "limit": { "context": 128000, "output": 32768 }
-        },
-        "llama-3.1-8b-instruct": {
-          "name": "Llama 3.1 8B (fast)",
-          "tool_call": true,
-          "limit": { "context": 128000, "output": 8192 }
-        }
-      }
-    }
-  },
-
-  "model": "litellm/hf-qwen25-32b",
-  "small_model": "litellm/llama-3.1-8b-instruct"
-}
-CONFIG_EOF
+if [ -d "$CONFIG_SRC" ]; then
+  echo "Deploying config from ${CONFIG_SRC} to ${CONFIG_DST}..."
+  mkdir -p "$CONFIG_DST"
+  cp -a "${CONFIG_SRC}/"* "${CONFIG_DST}/"
+else
+  echo "WARNING: Config directory not found at ${CONFIG_SRC}"
+  echo "  The shared config will not be updated."
+fi
 
 # Write setup.sh
 cat > "${TARGET_DIR}/bin/setup.sh" << 'SETUP_EOF'
@@ -193,6 +177,7 @@ cat > "${TARGET_DIR}/bin/setup.sh" << 'SETUP_EOF'
 # Usage: source /cvmfs/sw.escape.eu/lumi/latest/bin/setup.sh
 
 _lumi_dir="/cvmfs/sw.escape.eu/lumi/latest/bin"
+_lumi_config="/cvmfs/sw.escape.eu/etc/lumi"
 
 # Add lumi to PATH (idempotent)
 case ":${PATH}:" in
@@ -206,17 +191,19 @@ export LUMI_VERSION="$(cat "${_lumi_dir}/../VERSION" 2>/dev/null || echo unknown
 # Prevent opencode's built-in auto-update (we manage versions via CVMFS)
 export OPENCODE_DISABLE_AUTOUPDATE=1
 
-# Load shared config from CVMFS (user/project configs can override)
-export OPENCODE_CONFIG="${_lumi_dir}/../etc/lumi/opencode.json"
+# Load shared config directory from CVMFS
+# Contains opencode.json, AGENTS.md, and any custom agents/commands/modes.
+# User and project configs can still override individual settings.
+export OPENCODE_CONFIG_DIR="${_lumi_config}"
 
 # Load LiteLLM API key from per-user file if it exists
 if [ -z "${LITELLM_API_KEY:-}" ] && [ -f "$HOME/.lumi/litellm-key" ]; then
   export LITELLM_API_KEY="$(cat "$HOME/.lumi/litellm-key")"
 fi
 
-echo "lumi v${LUMI_VERSION} ready"
+echo "lumi v${LUMI_VERSION} ready  (config: ${_lumi_config})"
 
-unset _lumi_dir
+unset _lumi_dir _lumi_config
 SETUP_EOF
 chmod +x "${TARGET_DIR}/bin/setup.sh"
 
