@@ -191,6 +191,12 @@ export LUMI_VERSION="$(cat "${_lumi_dir}/../VERSION" 2>/dev/null || echo unknown
 # Prevent opencode's built-in auto-update (we manage versions via CVMFS)
 export OPENCODE_DISABLE_AUTOUPDATE=1
 
+# SQLite WAL mode doesn't work on EOS (no mmap/flock support).
+# Store the database on a local filesystem instead.
+_lumi_data="/tmp/${USER}-lumi"
+mkdir -p "$_lumi_data" 2>/dev/null
+export OPENCODE_DB="${_lumi_data}/opencode.db"
+
 # Load shared config directory from CVMFS
 # Contains opencode.json, AGENTS.md, and any custom agents/commands/modes.
 # User and project configs can still override individual settings.
@@ -203,7 +209,7 @@ fi
 
 echo "lumi v${LUMI_VERSION} ready  (config: ${_lumi_config})"
 
-unset _lumi_dir _lumi_config
+unset _lumi_dir _lumi_config _lumi_data
 SETUP_EOF
 chmod +x "${TARGET_DIR}/bin/setup.sh"
 
