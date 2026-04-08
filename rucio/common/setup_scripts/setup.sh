@@ -46,7 +46,7 @@ fi
 
 if [ -z $RUCIO_HOME ]; then
     if [ "$donkey_shell" = "zsh" ]; then
-        export RUCIO_HOME="$( cd "$( dirname "$0}" )" && pwd )"
+        export RUCIO_HOME="$( cd "$( dirname "$0" )" && pwd )"
     else
         export RUCIO_HOME="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
     fi

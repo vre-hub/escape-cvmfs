@@ -7,83 +7,116 @@
 #                       http://www.apache.org/licenses/LICENSE-2.0
 #
 # Authors:
-# - Giovanni Guerrieri, <giovanin.guerrieri@cern.ch>, 2025
+# - Giovanni Guerrieri, <giovanni.guerrieri@cern.ch>, 2025
 
-# Define Rucio and Python versions
-RUCIO_VERSION=38.3.0
-BASE_PYTHON_VERSION=3.11.9
-PYTHON_VERSIONS=("3.11.8" "3.11.9") # space-separated list of python versions
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Defaults — override via CLI or environment
+RUCIO_VERSION="${1:-${RUCIO_VERSION:-38.3.0}}"
+BASE_PYTHON_VERSION="${BASE_PYTHON_VERSION:-3.11.9}"
+PYTHON_VERSIONS=("3.11.9" "3.12.2")
+
+EXPORT_ENV_NAME=rucio
 
 # Set locale settings
 export LANG=en_US.UTF-8
 export LC_ALL=en_US.UTF-8
 
-# Function to install Rucio clients and dependencies for a specific Python version
-run_install () {
-  echo "$1: Loading virtual environment" 
-  export RUCIO_VERSION=$RUCIO_VERSION
-  pyenv virtualenv --force $1 rucio-py$1  # Create or overwrite virtual environment
-  pyenv local rucio-py$1  # Set the local Python version
-  export RUCIO_PATH_PREFIX=$(pyenv virtualenv-prefix)  # Get the virtualenv path
-  python --version  # Display the Python version
-
-  echo "$1: Installing dependencies"
-  pip install pip --upgrade  # Upgrade pip
-  pip install -U setuptools  # Upgrade setuptools
-  pip install rucio-clients==$RUCIO_VERSION  # Install Rucio clients
-  pip install argcomplete  # Install argcomplete dependency separately
-  pip freeze  # Display installed packages
-
-  echo "$1: Bringing things together"
-  # Ensure dogpile package is properly initialized
-  DOGPILE_PATH=$(pyenv virtualenv-prefix)/envs/rucio-py$1/lib/python${1%*.*}/site-packages/dogpile
-  if [ -d "$DOGPILE_PATH" ]; then
-    touch "$DOGPILE_PATH/__init__.py"
-  else
-    echo "Warning: Dogpile package not found at $DOGPILE_PATH"
-  fi
-  # Copy the Python library files to the `lib` directory
-  cp -r $(pyenv virtualenv-prefix)/envs/rucio-py$1/lib/python${1%*.*}/ lib/
+warn () {
+  echo "WARNING: $*" >&2
 }
 
-# Create the main directory for the tarball
-mkdir $RUCIO_VERSION
-cd $RUCIO_VERSION
-mkdir lib  # Create a directory to store Python libraries
+# Install rucio-clients into a pyenv virtualenv and consolidate site-packages
+run_install () {
+  local version="$1"
+  local env_name="${EXPORT_ENV_NAME}-py${version}"
+  local py_mm="${version%.*}"
 
-# Run the installation process for each Python version
-for version in ${PYTHON_VERSIONS[@]}; do
+  echo "$version: Loading virtual environment"
+  pyenv install -s "$version"
+  pyenv virtualenv --force "$version" "$env_name"
+  pyenv local "$env_name"
+  python --version
+
+  echo "$version: Installing dependencies"
+  pip install --upgrade pip
+  pip install -U setuptools wheel
+  pip install "rucio-clients==${RUCIO_VERSION}"
+  pip install argcomplete
+  pip freeze
+
+  echo "$version: Consolidating site-packages"
+  local lib_root
+  lib_root="$(pyenv virtualenv-prefix)/envs/${env_name}/lib/python${py_mm}"
+
+  # Ensure dogpile namespace package is properly initialized
+  local dogpile_path="${lib_root}/site-packages/dogpile"
+  if [ -d "$dogpile_path" ]; then
+    touch "$dogpile_path/__init__.py"
+  else
+    warn "Dogpile package not found at $dogpile_path"
+  fi
+
+  if [ ! -d "$lib_root" ]; then
+    warn "Expected lib directory $lib_root missing"
+  else
+    mkdir -p "lib/python${py_mm}"
+    rsync -a "$lib_root"/ "lib/python${py_mm}/"
+  fi
+}
+
+# Prepare workspace
+BUILD_ROOT="$SCRIPT_DIR/$RUCIO_VERSION"
+mkdir -p "$BUILD_ROOT"
+cd "$BUILD_ROOT"
+mkdir -p lib
+
+echo "=== Building rucio-clients $RUCIO_VERSION ==="
+echo "    Python versions: ${PYTHON_VERSIONS[*]}"
+echo "    Base Python:     $BASE_PYTHON_VERSION"
+
+# Install for each Python version
+for version in "${PYTHON_VERSIONS[@]}"; do
   run_install "$version"
 done
 
 echo "General: Copying in bin/"
-# Set the base Python version as the local version
-pyenv local rucio-py$BASE_PYTHON_VERSION
-mkdir bin  # Create a directory for executable scripts
-# Copy Rucio executables to the `bin` directory
-cp $(pyenv virtualenv-prefix)/envs/rucio-py$BASE_PYTHON_VERSION/bin/rucio bin/
-cp $(pyenv virtualenv-prefix)/envs/rucio-py$BASE_PYTHON_VERSION/bin/rucio-admin bin/
-cp $(pyenv virtualenv-prefix)/envs/rucio-py$BASE_PYTHON_VERSION/bin/register-python-argcomplete bin/
+pyenv local "${EXPORT_ENV_NAME}-py${BASE_PYTHON_VERSION}"
+mkdir -p bin
+cp "$(pyenv virtualenv-prefix)/envs/${EXPORT_ENV_NAME}-py${BASE_PYTHON_VERSION}/bin/rucio" bin/
+cp "$(pyenv virtualenv-prefix)/envs/${EXPORT_ENV_NAME}-py${BASE_PYTHON_VERSION}/bin/rucio-admin" bin/
+cp "$(pyenv virtualenv-prefix)/envs/${EXPORT_ENV_NAME}-py${BASE_PYTHON_VERSION}/bin/register-python-argcomplete" bin/
+
+echo "General: Cleaning bin/"
+if [ -f "$SCRIPT_DIR/common/rm_from_bin_folder.txt" ]; then
+  while IFS= read -r file; do
+    [ -n "$file" ] || continue
+    echo " - $file"
+    rm -f "bin/$file"
+  done < "$SCRIPT_DIR/common/rm_from_bin_folder.txt"
+fi
 
 echo "General: Adapting bin scripts"
-# Modify the shebang lines of the copied scripts to use the correct Python interpreter
-for script in bin/rucio bin/rucio-admin bin/register-python-argcomplete; do
-  sed -i '1c\
-#!/bin/bash\n\
-# -*- coding: utf-8 -*-\n\
-"exec" "$RUCIO_PYTHONBIN" "-u" "-Wignore" "$0" "$@"\n' "$script"
+for script in bin/*; do
+  [ -f "$script" ] || continue
+  tmpfile="$(mktemp)"
+  {
+    printf '#!/bin/bash\n'
+    printf '# -*- coding: utf-8 -*-\n'
+    printf '"exec" "$RUCIO_PYTHONBIN" "-u" "-Wignore" "$0" "$@"\n'
+    tail -n +2 "$script" 2>/dev/null || true
+  } > "$tmpfile"
+  mv "$tmpfile" "$script"
+  chmod +x "$script"
 done
 
-
-echo "General: Copying setup script"
-# Copy the setup script into the package
-cp -r ../rucio/common/setup_scripts/setup* .
+echo "General: Copying setup scripts"
+cp -R "$SCRIPT_DIR"/common/setup_scripts/setup* .
 
 echo "General: Creating archive"
-# Create a tarball of the Rucio clients
-tar zcf ../rucio-clients-$RUCIO_VERSION.tar.gz *
+tar zcf "$SCRIPT_DIR/rucio-clients-${RUCIO_VERSION}.tar.gz" *
+echo " - $(ls -la "$SCRIPT_DIR/rucio-clients-${RUCIO_VERSION}.tar.gz")"
 
 echo "General: DONE!"
-
-# Provide the command to upload the tarball to a remote server
-# echo "scp rucio-clients-$RUCIO_VERSION.tar.gz ${USER}@lxplus:~/public/rucio-clients/"

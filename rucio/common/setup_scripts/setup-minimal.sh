@@ -25,8 +25,8 @@ if [ -z "$RUCIO_HOME" ]; then
     echo "INFO: Set RUCIO_HOME to $RUCIO_HOME"
 fi
 
-# Set python binary, default to 'python' if not set
-export RUCIO_PYTHONBIN="${RUCIO_PYTHONBIN:-python}"
+# Set python binary, default to 'python3' if not set
+export RUCIO_PYTHONBIN="${RUCIO_PYTHONBIN:-python3}"
 
 # Verify that the Python binary exists and is usable
 if ! command -v "$RUCIO_PYTHONBIN" >/dev/null 2>&1; then
@@ -34,10 +34,10 @@ if ! command -v "$RUCIO_PYTHONBIN" >/dev/null 2>&1; then
     return 64
 fi
 
-# Ensure Python version is >= 2.7
+# Ensure Python version is >= 3.9
 version=$($RUCIO_PYTHONBIN -c 'import sys; print("%d%02d" % sys.version_info[:2])')
-if [ "$version" -lt 207 ]; then
-    echo "ERROR: Python version must be >= 2.7"
+if [ "$version" -lt 309 ]; then
+    echo "ERROR: Python version must be >= 3.9 (found $($RUCIO_PYTHONBIN -V 2>&1))"
     return 64
 fi
 
@@ -54,6 +54,9 @@ fi
 # Update PATH and PYTHONPATH
 export PATH="$RUCIO_HOME/bin:$PATH"
 export PYTHONPATH="$sitepkgs:$PYTHONPATH"
+
+# Clear the command hash table to ensure the shell uses the updated PATH
+hash -r 2>/dev/null || true
 
 # Optional: Bash autocompletion for rucio clients
 if [ "$shell_type" = "bash" ]; then
