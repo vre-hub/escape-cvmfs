@@ -10,8 +10,11 @@ scripts; both are exposed from CVMFS:
 
 ### CVMFS layout
 
+MCP servers are grouped under a shared `mcp/` namespace so future ones land as
+siblings rather than cluttering the top level.
+
 ```
-/cvmfs/sw.escape.eu/root-mcp/
+/cvmfs/sw.escape.eu/mcp/root-mcp/
   <version>/
     bin/
       root-mcp          # wrapper — sources LCG view, execs python3
@@ -68,7 +71,7 @@ warning) when the view isn't mounted on the publisher host.
 
 ```bash
 source /cvmfs/sw.escape.eu/lumi/latest/bin/setup.sh
-source /cvmfs/sw.escape.eu/root-mcp/latest/bin/setup.sh
+source /cvmfs/sw.escape.eu/mcp/root-mcp/latest/bin/setup.sh
 lumi
 ```
 
@@ -92,7 +95,7 @@ If you prefer the full MCP interface (structured tool schemas), add this to
     "root-mcp": {
       "type": "local",
       "command": [
-        "/cvmfs/sw.escape.eu/root-mcp/latest/bin/root-mcp",
+        "/cvmfs/sw.escape.eu/mcp/root-mcp/latest/bin/root-mcp",
         "--data-path", "/your/data"
       ]
     }

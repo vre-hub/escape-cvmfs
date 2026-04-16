@@ -30,7 +30,7 @@
 # out of the box. Override the view with LCG_VIEW; override the build-stage
 # Python with BUILD_PYTHON.
 #
-# Mirrors the pattern used by atlasopenmagic-mcp/ in this repo.
+# Mirrors the pattern used by mcp/atlasopenmagic-mcp/ in this repo.
 #
 
 set -euo pipefail
@@ -40,6 +40,8 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 MOUNTPOINT="/cvmfs/sw.escape.eu"
 PACKAGE="root-mcp"
+# Namespace: MCP servers live under /cvmfs/sw.escape.eu/mcp/<name>/<version>/
+NAMESPACE="mcp"
 LCG_VIEW_DEFAULT="/cvmfs/sft.cern.ch/lcg/views/LCG_107/x86_64-el9-gcc13-opt"
 LCG_VIEW="${LCG_VIEW:-$LCG_VIEW_DEFAULT}"
 LCG_PYTHON="${LCG_VIEW}/bin/python3"
@@ -278,9 +280,9 @@ WRAPPER
   cat > "${STAGING}/bin/setup.sh" <<'SETUP'
 #!/usr/bin/env bash
 # root-mcp CVMFS setup — source to put root-mcp and root-cli on $PATH.
-# Usage: source /cvmfs/sw.escape.eu/root-mcp/latest/bin/setup.sh
+# Usage: source /cvmfs/sw.escape.eu/mcp/root-mcp/latest/bin/setup.sh
 
-_rootmcp_dir="/cvmfs/sw.escape.eu/root-mcp/latest/bin"
+_rootmcp_dir="/cvmfs/sw.escape.eu/mcp/root-mcp/latest/bin"
 
 case ":${PATH}:" in
   *":${_rootmcp_dir}:"*) ;;
@@ -315,13 +317,16 @@ fi
 # ---------------------------------------------------------------------------
 # Publish to CVMFS
 # ---------------------------------------------------------------------------
-TARGET_DIR="${PACKAGE}/${VERSION}"
-LATEST_LINK="${PACKAGE}/latest"
+TARGET_DIR="${NAMESPACE}/${PACKAGE}/${VERSION}"
+LATEST_LINK="${NAMESPACE}/${PACKAGE}/latest"
 
 echo "Starting CVMFS transaction..."
 cvmfs_server transaction sw.escape.eu
 
 cd "$MOUNTPOINT"
+
+# Ensure namespace dir exists (first publish into mcp/ creates it)
+mkdir -p "${NAMESPACE}/${PACKAGE}"
 
 if [ -d "$TARGET_DIR" ]; then
   if [ "$FORCE" = true ]; then
@@ -367,3 +372,6 @@ echo '    }'
 echo '  }'
 echo ""
 echo "Or use root-cli directly via opencode's Bash tool (no mcp block needed)."
+echo ""
+echo "MCP servers now live under ${MOUNTPOINT}/${NAMESPACE}/. Lumi and other"
+echo "consumers should reference the full path above."
