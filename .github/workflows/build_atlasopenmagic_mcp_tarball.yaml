@@ -1,0 +1,90 @@
+name: Build atlasopenmagic-mcp Tarball
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'mcp/atlasopenmagic-mcp/**'
+  workflow_dispatch:
+    inputs:
+      mcp_version:
+        description: 'atlasopenmagic-mcp version (PyPI or git ref)'
+        required: false
+        default: '0.1.0'
+
+jobs:
+  build-tarball:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout cvmfs repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Build site-packages tarball
+        run: |
+          VERSION="${{ github.event.inputs.mcp_version || '0.1.0' }}"
+          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
+
+          # Install into a target directory (no venv needed)
+          mkdir -p staging/lib/python3.11/site-packages
+          mkdir -p staging/bin
+
+          # Try local repo first, fall back to PyPI
+          if [ -d "mcp/atlasopenmagic-mcp/src" ]; then
+            pip install --target staging/lib/python3.11/site-packages ./mcp/atlasopenmagic-mcp/src/.. 2>/dev/null || \
+            pip install --target staging/lib/python3.11/site-packages "atlasopenmagic-mcp==${VERSION}"
+          else
+            pip install --target staging/lib/python3.11/site-packages "atlasopenmagic-mcp==${VERSION}"
+          fi
+
+          # Write version marker
+          echo "${VERSION}" > staging/VERSION
+
+          # Write wrapper script (uses LCG Python from CVMFS)
+          cat > staging/bin/atlasopenmagic-mcp << 'WRAPPER'
+          #!/usr/bin/env bash
+          _dir="$(cd "$(dirname "$0")/.." && pwd)"
+          _python="/cvmfs/sft.cern.ch/lcg/views/LCG_107/x86_64-el9-gcc13-opt/bin/python3"
+          if [ ! -f "$_python" ]; then
+            echo "ERROR: LCG Python not found at $_python"
+            echo "Make sure /cvmfs/sft.cern.ch is mounted."
+            exit 1
+          fi
+          export PYTHONPATH="${_dir}/lib/python3.11/site-packages${PYTHONPATH:+:$PYTHONPATH}"
+          exec "$_python" -m atlasopenmagic_mcp.cli "$@"
+          WRAPPER
+          chmod +x staging/bin/atlasopenmagic-mcp
+
+          # Write setup.sh
+          # Canonical path is /cvmfs/sw.escape.eu/mcp/atlasopenmagic-mcp/latest/...
+          # (the top-level /cvmfs/sw.escape.eu/atlasopenmagic-mcp is kept as a
+          # back-compat symlink by the updater).
+          cat > staging/bin/setup.sh << 'SETUP'
+          #!/usr/bin/env bash
+          _mcp_dir="/cvmfs/sw.escape.eu/mcp/atlasopenmagic-mcp/latest/bin"
+          case ":${PATH}:" in
+            *":${_mcp_dir}:"*) ;;
+            *) export PATH="${_mcp_dir}:${PATH}" ;;
+          esac
+          echo "atlasopenmagic-mcp v$(cat "${_mcp_dir}/../VERSION" 2>/dev/null || echo unknown) ready"
+          unset _mcp_dir
+          SETUP
+          chmod +x staging/bin/setup.sh
+
+          # Verify the package is importable
+          PYTHONPATH=staging/lib/python3.11/site-packages python -c "import atlasopenmagic_mcp; print('OK:', atlasopenmagic_mcp.__version__)"
+
+          # Create tarball
+          cd staging
+          tar -czf "../atlasopenmagic-mcp-${VERSION}.tar.gz" *
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlasopenmagic-mcp
+          path: atlasopenmagic-mcp-*.tar.gz
