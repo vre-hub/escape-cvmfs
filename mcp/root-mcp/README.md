@@ -21,9 +21,8 @@ Two entry points ship from the tarball:
 
 ## Flow
 
-1. **CI** — push to `main` under `mcp/root-mcp/**`, or trigger
-   `Build root-mcp Tarball` manually with a PyPI version. Download the
-   `root-mcp` artifact.
+1. **CI** — trigger `Build root-mcp Tarball` from the Actions tab with a
+   PyPI version (e.g. `0.3.2`). Download the `root-mcp` artifact.
 2. **Deploy** — on the CVMFS publisher:
    ```
    scp root-mcp-<version>.tar.gz publisher:

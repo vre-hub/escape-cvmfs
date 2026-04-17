@@ -1,10 +1,6 @@
 name: Build atlasopenmagic-mcp Tarball
 
 on:
-  push:
-    branches: [ main ]
-    paths:
-      - 'mcp/atlasopenmagic-mcp/**'
   workflow_dispatch:
     inputs:
       mcp_version:

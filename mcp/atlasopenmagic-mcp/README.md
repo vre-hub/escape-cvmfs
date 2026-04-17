@@ -17,9 +17,8 @@ an MCP server exposing ATLAS Open Data metadata and file retrieval.
 
 ## Flow
 
-1. **CI** — push to `main` under `mcp/atlasopenmagic-mcp/**`, or trigger
-   `Build atlasopenmagic-mcp Tarball` manually with a PyPI version. Download
-   the `atlasopenmagic-mcp` artifact.
+1. **CI** — trigger `Build atlasopenmagic-mcp Tarball` from the Actions tab
+   with a PyPI version. Download the `atlasopenmagic-mcp` artifact.
 2. **Deploy** — on the CVMFS publisher:
    ```
    scp atlasopenmagic-mcp-<version>.tar.gz publisher:
