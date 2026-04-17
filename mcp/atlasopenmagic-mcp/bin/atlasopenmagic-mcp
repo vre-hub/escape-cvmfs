@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# atlasopenmagic-mcp CVMFS wrapper
+set -e
+
+_dir="$(cd "$(dirname "$0")/.." && pwd)"
+_python="/cvmfs/sft.cern.ch/lcg/views/LCG_107/x86_64-el9-gcc13-opt/bin/python3"
+
+if [ ! -x "$_python" ]; then
+  echo "ERROR: LCG Python not found at $_python" >&2
+  echo "       Make sure /cvmfs/sft.cern.ch is mounted." >&2
+  exit 1
+fi
+
+export PYTHONPATH="${_dir}/lib/python3.11/site-packages${PYTHONPATH:+:${PYTHONPATH}}"
+exec "$_python" -m atlasopenmagic_mcp.cli "$@"

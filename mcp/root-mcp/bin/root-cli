@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# root-cli CVMFS wrapper (see root-mcp for rationale).
+set -e
+
+_dir="$(cd "$(dirname "$0")/.." && pwd)"
+_view="/cvmfs/sft.cern.ch/lcg/views/LCG_107/x86_64-el9-gcc13-opt"
+
+if [ ! -r "${_view}/setup.sh" ]; then
+  echo "ERROR: LCG view not found at ${_view}" >&2
+  echo "       Make sure /cvmfs/sft.cern.ch is mounted." >&2
+  exit 1
+fi
+
+# shellcheck disable=SC1091
+. "${_view}/setup.sh"
+
+export PYTHONPATH="${PYTHONPATH:+${PYTHONPATH}:}${_dir}/lib/python3.11/site-packages"
+
+exec python3 -c "from root_cli.main import main; import sys; sys.exit(main() or 0)" "$@"

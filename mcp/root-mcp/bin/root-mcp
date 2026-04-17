@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# root-mcp CVMFS wrapper
+# Sources the LCG view so PyROOT's numpy/ROOT/uproot take precedence on
+# PYTHONPATH (ABI-safe), then appends our site-packages for root_mcp/root_cli.
+set -e
+
+_dir="$(cd "$(dirname "$0")/.." && pwd)"
+_view="/cvmfs/sft.cern.ch/lcg/views/LCG_107/x86_64-el9-gcc13-opt"
+
+if [ ! -r "${_view}/setup.sh" ]; then
+  echo "ERROR: LCG view not found at ${_view}" >&2
+  echo "       Make sure /cvmfs/sft.cern.ch is mounted." >&2
+  exit 1
+fi
+
+# shellcheck disable=SC1091
+. "${_view}/setup.sh"
+
+export PYTHONPATH="${PYTHONPATH:+${PYTHONPATH}:}${_dir}/lib/python3.11/site-packages"
+
+exec python3 -c "from root_mcp.server import main; import sys; sys.exit(main() or 0)" "$@"
