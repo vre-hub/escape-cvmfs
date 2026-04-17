@@ -76,6 +76,11 @@
       "type": "remote",
       "url": "https://atlasopenmagic-mcp.app.cern.ch/mcp",
       "oauth": false
+    },
+    "cernopendata": {
+      "type": "remote",
+      "url": "https://cernopendata-mcp.app.cern.ch/mcp",
+      "oauth": false
     }
   },
 

@@ -1,7 +1,17 @@
 ---
 name: atlas-opendata
-description: Query ATLAS Open Data datasets, metadata, cross-sections, and file URLs using the atlasopenmagic MCP tools. Load this skill whenever the user asks about ATLAS Open Data, Monte Carlo samples, DSIDs, cross-sections, or physics datasets.
+description: Query ATLAS Open Data Monte Carlo samples using the atlasopenmagic MCP tools. Load this skill specifically for ATLAS DSIDs, `physics_short` names, cross-sections, k-factors, filter efficiencies, MC weights, or file URLs tied to a named ATLAS release (e.g. 2024r-pp, 2025r-evgen-13tev). For CMS / LHCb / ALICE / OPERA records, or portal-wide queries by recid / DOI / title, load the `cern-opendata` skill instead.
 ---
+
+## Scope
+
+Use this skill only when the user is clearly working with ATLAS Monte
+Carlo samples or an ATLAS Open Data release. For non-ATLAS experiments,
+portal-wide record searches, or records identified by `recid` / DOI /
+title, use the sibling `cern-opendata` skill (backed by the
+`cernopendata` MCP). The two servers cooperate — you can start from a
+portal record via `cod_*` tools and drop into ATLAS-specific metadata
+with `atlas_*` tools when the analysis calls for it.
 
 ## MCP Tools Available
 
