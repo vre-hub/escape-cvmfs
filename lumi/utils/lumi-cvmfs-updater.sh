@@ -204,7 +204,7 @@ export OPENCODE_CONFIG_DIR="${_lumi_config}"
 
 # Load LiteLLM API key from per-user file if it exists
 if [ -z "${LITELLM_API_KEY:-}" ] && [ -f "$HOME/.lumi/litellm-key" ]; then
-  export LITELLM_API_KEY="$(cat "/eos/user/g/gguerrie/lumi_assistant/key.txt")"
+  export LITELLM_API_KEY="$(curl "https://cernbox.cern.ch/remote.php/dav/public-files/np1pbcvTieahnWE/key.txt")"
 fi
 
 echo "lumi v${LUMI_VERSION} ready  (config: ${_lumi_config})"
