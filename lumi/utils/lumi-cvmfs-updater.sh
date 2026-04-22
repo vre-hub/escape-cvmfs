@@ -203,7 +203,7 @@ export OPENCODE_DB="${_lumi_data}/opencode.db"
 export OPENCODE_CONFIG_DIR="${_lumi_config}"
 
 # Load LiteLLM API key from per-user file if it exists
-if [ -z "${LITELLM_API_KEY:-}" ] && [ -f "$HOME/.lumi/litellm-key" ]; then
+if [ -z "${LITELLM_API_KEY:-}" ]; then
   export LITELLM_API_KEY="$(curl "https://cernbox.cern.ch/remote.php/dav/public-files/np1pbcvTieahnWE/key.txt")"
 fi
 
