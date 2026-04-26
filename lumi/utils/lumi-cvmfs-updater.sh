@@ -202,9 +202,33 @@ export OPENCODE_DB="${_lumi_data}/opencode.db"
 # User and project configs can still override individual settings.
 export OPENCODE_CONFIG_DIR="${_lumi_config}"
 
+# Load atom-assistant setup if available
+_atom_setup="/cvmfs/sw.escape.eu/etc/lumi/atom-assistant/latest/bin/setup.sh"
+if [ -f "$_atom_setup" ]; then
+  source "$_atom_setup"
+fi
+
 # Load LiteLLM API key from per-user file if it exists
 if [ -z "${LITELLM_API_KEY:-}" ]; then
-  export LITELLM_API_KEY="$(curl "https://cernbox.cern.ch/remote.php/dav/public-files/np1pbcvTieahnWE/key.txt")"
+  if [ -r /eos/user/g/gguerrie/lumi_assistant/key.txt ]; then
+    export LITELLM_API_KEY="$(cat /eos/user/g/gguerrie/lumi_assistant/key.txt)"
+  else
+    echo ""
+    echo "╔════════════════════════════════════════════════════════════════════╗"
+    echo "║                          ⚠️  WARNING  ⚠️                           ║"
+    echo "╠════════════════════════════════════════════════════════════════════╣"
+    echo "║  LITELLM_API_KEY not set and key file not accessible.              ║"
+    echo "║                                                                    ║"
+    echo "║  To use lumi, please either:                                       ║"
+    echo "║                                                                    ║"
+    echo "║  1. Export your own LITELLM_API_KEY environment variable:          ║"
+    echo "║     export LITELLM_API_KEY=\"your-api-key-here\"                     ║"
+    echo "║                                                                    ║"
+    echo "║  2. Request access to the lumi-api-access egroup:                  ║"
+    echo "║     https://gms.web.cern.ch/group/lumi-api-access                  ║"
+    echo "╚════════════════════════════════════════════════════════════════════╝"
+    echo ""
+  fi
 fi
 
 echo "lumi v${LUMI_VERSION} ready  (config: ${_lumi_config})"
