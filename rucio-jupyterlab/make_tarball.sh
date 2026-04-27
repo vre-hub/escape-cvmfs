@@ -11,7 +11,7 @@
 # - Enrique Garcia Garcia, <enrique.garcia.garcia@cern.ch>, 2025
 
 # Define Rucio and Python versions
-RUCIO_EXT_VERSION=1.4.1
+RUCIO_EXT_VERSION=40.0.2
 RUCIO_CLIENTS_VERSION=35.8.0
 BASE_PYTHON_VERSION=3.11.8
 PYTHON_VERSIONS=("3.11.8" "3.12.2") # space-separated list of python versions
@@ -33,8 +33,7 @@ run_install () {
   echo "$1: Installing dependencies"
   pip install pip --upgrade  # Upgrade pip
   pip install -U setuptools  # Upgrade setuptools
-  # pip install rucio-jupyterlab=="$RUCIO_EXT_VERSION"  # Install Rucio jlab - script run inside cd $RUCIO_EXT_VERSION
-  pip install git+https://github.com/Soap2G/jupyterlab-extension@gguerrie-cache-fix
+  pip install rucio-jupyterlab=="$RUCIO_EXT_VERSION"  # Install Rucio jlab - script run inside cd $RUCIO_EXT_VERSION
   pip install rucio-clients=="$RUCIO_CLIENTS_VERSION"
   pip install argcomplete  # Install argcomplete dependency separately
   pip freeze  # Display installed packages
@@ -65,13 +64,15 @@ echo "General: Copying in bin/"
 # Set the base Python version as the local version
 pyenv local rucio-jlab-ext-py$BASE_PYTHON_VERSION
 mkdir bin  # Create a directory for executable scripts
-# Copy Rucio and Jupyter exntesion executables to the `bin` directory
+# Copy Rucio and Jupyter extension executables to the `bin` directory
 cp -r $(pyenv virtualenv-prefix)/envs/rucio-jlab-ext-py$BASE_PYTHON_VERSION/bin/* bin/
 # Remove the pyenv, python and pip default executables related with the creation of the pyenv
 # An error 'sed: couldn't edit bin/__pycache__: not a regular file' would appear
-for file in `cat ../common/rm_from_bin_folder.txt`; do
-  rm -f bin/$file
-done
+if [ -f "common/rm_from_bin_folder.txt" ]; then
+  while IFS= read -r file; do
+    rm -f "bin/$file"
+  done < "common/rm_from_bin_folder.txt"
+fi
 
 echo "General: Adapting bin scripts"
 # Modify the shebang lines of the copied scripts to use the correct Python interpreter
