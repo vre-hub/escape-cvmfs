@@ -30,7 +30,7 @@ jobs:
       - name: Install bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: '1.3.11'
+          bun-version: '1.3.14'
 
       - name: Install dependencies (from repo root — resolves workspace packages)
         working-directory: opencode-src
