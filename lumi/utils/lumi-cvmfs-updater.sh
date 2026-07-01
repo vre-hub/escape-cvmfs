@@ -18,6 +18,9 @@
 
 set -euo pipefail
 
+# Absolute path to this script's directory, resolved before any `cd` changes CWD.
+SCRIPT_DIR="$(cd "$(dirname -- "$0")" && pwd)"
+
 # Parse options
 FORCE=false
 while [[ $# -gt 0 ]]; do
@@ -158,7 +161,7 @@ echo "${VERSION}" > "${TARGET_DIR}/VERSION"
 # The config lives in the repo at lumi/config/ and is deployed to a
 # version-independent path so it can be updated without re-publishing
 # the binary.
-CONFIG_SRC="$(cd "$(dirname -- "$0")/../config" && pwd)"
+CONFIG_SRC="$(cd "${SCRIPT_DIR}/../config" && pwd)"
 CONFIG_DST="etc/lumi"
 
 if [ -d "$CONFIG_SRC" ]; then
