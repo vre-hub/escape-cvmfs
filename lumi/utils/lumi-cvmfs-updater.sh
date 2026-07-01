@@ -194,15 +194,24 @@ export LUMI_VERSION="$(cat "${_lumi_dir}/../VERSION" 2>/dev/null || echo unknown
 # Prevent opencode's built-in auto-update (we manage versions via CVMFS)
 export OPENCODE_DISABLE_AUTOUPDATE=1
 
-# Load shared config directory from CVMFS
-# Contains opencode.json, AGENTS.md, and any custom agents/commands/modes.
+# Per-user writable scratch dir on local fs (CVMFS is read-only).
+_lumi_data="/tmp/${USER}-lumi"
+mkdir -p "$_lumi_data" 2>/dev/null
+
+# opencode treats OPENCODE_CONFIG_DIR as its *writable* config home (it
+# npm-installs @opencode-ai/plugin into it), so it can't point at read-only
+# CVMFS. Stage a per-user copy of the shared config (opencode.json, AGENTS.md,
+# agents/, skills/), refreshed from CVMFS each session; opencode may write here.
 # User and project configs can still override individual settings.
-export OPENCODE_CONFIG_DIR="${_lumi_config}"
+# Default location is local scratch (wiped on reboot); set LUMI_CONFIG_HOME to
+# a persistent path (e.g. ~/.lumi/config) to keep it across sessions.
+_lumi_cfg="${LUMI_CONFIG_HOME:-${_lumi_data}/config}"
+mkdir -p "$_lumi_cfg"
+cp -a "${_lumi_config}/." "$_lumi_cfg/" 2>/dev/null || true
+export OPENCODE_CONFIG_DIR="$_lumi_cfg"
 
 # SQLite WAL mode doesn't work on EOS (no mmap/flock support).
 # Store the database on a local filesystem instead.
-_lumi_data="/tmp/${USER}-lumi"
-mkdir -p "$_lumi_data" 2>/dev/null
 export OPENCODE_DB="${_lumi_data}/opencode.db"
 
 # Load atom-assistant setup if available
@@ -236,7 +245,7 @@ fi
 
 echo "lumi v${LUMI_VERSION} ready"
 
-unset _lumi_dir _lumi_config _lumi_data
+unset _lumi_dir _lumi_config _lumi_data _lumi_cfg
 SETUP_EOF
 chmod +x "${TARGET_DIR}/bin/setup.sh"
 
