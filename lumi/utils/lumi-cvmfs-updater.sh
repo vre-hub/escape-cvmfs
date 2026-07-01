@@ -158,7 +158,7 @@ echo "${VERSION}" > "${TARGET_DIR}/VERSION"
 # The config lives in the repo at lumi/config/ and is deployed to a
 # version-independent path so it can be updated without re-publishing
 # the binary.
-CONFIG_SRC="$(cd "$(dirname "$0")/../config" && pwd)"
+CONFIG_SRC="$(cd "$(dirname -- "$0")/../config" && pwd)"
 CONFIG_DST="etc/lumi"
 
 if [ -d "$CONFIG_SRC" ]; then
@@ -191,16 +191,16 @@ export LUMI_VERSION="$(cat "${_lumi_dir}/../VERSION" 2>/dev/null || echo unknown
 # Prevent opencode's built-in auto-update (we manage versions via CVMFS)
 export OPENCODE_DISABLE_AUTOUPDATE=1
 
+# Load shared config directory from CVMFS
+# Contains opencode.json, AGENTS.md, and any custom agents/commands/modes.
+# User and project configs can still override individual settings.
+export OPENCODE_CONFIG_DIR="${_lumi_config}"
+
 # SQLite WAL mode doesn't work on EOS (no mmap/flock support).
 # Store the database on a local filesystem instead.
 _lumi_data="/tmp/${USER}-lumi"
 mkdir -p "$_lumi_data" 2>/dev/null
 export OPENCODE_DB="${_lumi_data}/opencode.db"
-
-# Load shared config directory from CVMFS
-# Contains opencode.json, AGENTS.md, and any custom agents/commands/modes.
-# User and project configs can still override individual settings.
-export OPENCODE_CONFIG_DIR="${_lumi_config}"
 
 # Load atom-assistant setup if available
 _atom_setup="/cvmfs/sw.escape.eu/etc/lumi/atom-assistant/latest/bin/setup.sh"
@@ -231,7 +231,7 @@ if [ -z "${LITELLM_API_KEY:-}" ]; then
   fi
 fi
 
-echo "lumi v${LUMI_VERSION} ready  (config: ${_lumi_config})"
+echo "lumi v${LUMI_VERSION} ready"
 
 unset _lumi_dir _lumi_config _lumi_data
 SETUP_EOF
