@@ -28,10 +28,10 @@ if ! command -v "$ATLASOPENMAGIC_PYTHONBIN" >/dev/null 2>&1; then
     return 64 2>/dev/null || exit 64
 fi
 
-# Ensure Python version is >= 3.9 (OpenMagic relies on modern features)
+# Ensure Python version is >= 3.10 (atlasopenmagic requires it)
 version=$($ATLASOPENMAGIC_PYTHONBIN -c 'import sys; print("%d%02d" % sys.version_info[:2])')
-if [ "$version" -lt 309 ]; then
-    echo "ERROR: Python version must be >= 3.9"
+if [ "$version" -lt 310 ]; then
+    echo "ERROR: Python version must be >= 3.10"
     return 64 2>/dev/null || exit 64
 fi
 
@@ -53,5 +53,20 @@ else
     export PYTHONPATH="$PYTHONPATH:$sitepkgs"
 fi
 
-echo "INFO: Finished setting up the ATLAS OpenMagic analysis environment."
+# Clear the command hash table to ensure the shell uses the updated PATH
+hash -r 2>/dev/null || true
+
+# If --notebook-mode flag is passed, output Python code instead
+if [ "$1" = "--notebook-mode" ]; then
+    cat <<EOF
+import os, sys
+os.environ['ATLASOPENMAGIC_HOME'] = '$ATLASOPENMAGIC_HOME'
+os.environ['PATH'] = '$ATLASOPENMAGIC_HOME/bin:' + os.environ.get('PATH', '')
+if '$sitepkgs' not in sys.path:
+    sys.path.insert(0, '$sitepkgs')
+print('INFO: ATLAS OpenMagic environment configured for notebook')
+EOF
+else
+    echo "INFO: Finished setting up the ATLAS OpenMagic analysis environment."
+fi
 

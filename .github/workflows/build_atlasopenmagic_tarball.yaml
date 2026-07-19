@@ -5,6 +5,12 @@ on:
     branches: [ main ]
     paths:
       - 'atlasopenmagic/**'
+  workflow_dispatch:
+    inputs:
+      atlasopenmagic_version:
+        description: 'atlasopenmagic version from PyPI (empty = latest release)'
+        required: false
+        default: ''
 
 jobs:
   build-tarball:
@@ -14,39 +20,23 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install system dependencies
+      - name: Install Python interpreters
+        uses: actions/setup-python@v5
+        with:
+          python-version: |
+            3.10
+            3.11
+            3.12
+            3.13
+            3.14
+
+      - name: Build tarball
         run: |
-          sudo apt-get update
-          sudo apt-get install -y make gcc zlib1g-dev libbz2-dev libreadline-dev \
-            libsqlite3-dev libssl-dev tk-dev libffi-dev liblzma-dev uuid-dev \
-            libgdbm-dev libnsl-dev git curl rsync unzip
-
-      - name: Install Python toolchain via pyenv and run build
-        run: |
-          # Install pyenv
-          curl https://pyenv.run | bash
-
-          # Set up pyenv environment
-          export PYENV_ROOT="$HOME/.pyenv"
-          export PATH="$PYENV_ROOT/bin:$PATH"
-          eval "$(pyenv init --path)"
-          eval "$(pyenv init -)"
-          eval "$(pyenv virtualenv-init -)"
-
-          # Install baseline Python used to bootstrap the script
-          pyenv install -s 3.11.9
-          pyenv global 3.11.9
-
-          # Confirm Python version
-          python --version
-
-          # Make build script executable and run it
           chmod +x ./atlasopenmagic/make_tarball.sh
-          ./atlasopenmagic/make_tarball.sh
+          ./atlasopenmagic/make_tarball.sh "${{ github.event.inputs.atlasopenmagic_version }}"
 
       - name: Upload tarball artifact
         uses: actions/upload-artifact@v4
         with:
           name: atlasopenmagic
           path: atlasopenmagic/atlasopenmagic-*.tar.gz
-
