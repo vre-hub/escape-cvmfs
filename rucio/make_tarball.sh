@@ -17,6 +17,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RUCIO_VERSION="${1:-${RUCIO_VERSION:-38.3.0}}"
 BASE_PYTHON_VERSION="${BASE_PYTHON_VERSION:-3.11.9}"
 PYTHON_VERSIONS=("3.11.9" "3.12.2")
+# pip requirement to install; a wheel path or VCS URL builds a non-PyPI client (e.g. rucio-rbac/)
+RUCIO_CLIENTS_SPEC="${RUCIO_CLIENTS_SPEC:-rucio-clients==${RUCIO_VERSION}}"
+# Optional directory whose contents are copied into the tarball root (e.g. etc/, extra setup scripts)
+EXTRA_FILES_DIR="${EXTRA_FILES_DIR:-}"
 
 EXPORT_ENV_NAME=rucio
 
@@ -43,7 +47,7 @@ run_install () {
   echo "$version: Installing dependencies"
   pip install --upgrade pip
   pip install -U setuptools wheel
-  pip install "rucio-clients==${RUCIO_VERSION}"
+  pip install "$RUCIO_CLIENTS_SPEC"
   pip install argcomplete
   pip freeze
 
@@ -114,6 +118,11 @@ done
 
 echo "General: Copying setup scripts"
 cp -R "$SCRIPT_DIR"/common/setup_scripts/setup* .
+
+if [ -n "$EXTRA_FILES_DIR" ]; then
+  echo "General: Copying extra files from $EXTRA_FILES_DIR"
+  rsync -a "$EXTRA_FILES_DIR"/ .
+fi
 
 echo "General: Creating archive"
 tar zcf "$SCRIPT_DIR/rucio-clients-${RUCIO_VERSION}.tar.gz" *
