@@ -1,0 +1,72 @@
+name: Build Rucio RBAC Clients Tarball
+
+# Builds rucio-rbac/ : a CVMFS copy of the container image hdemule/rucio-clients-rbac:<sha12>.
+# The commit of the fork is pinned in rucio-rbac/make_tarball.sh (FORK_SHA), never a branch.
+# Deploy: see rucio-rbac/README.md (rucio-rbac/utils/rucio-rbac-cvmfs-updater.sh).
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'rucio-rbac/**'
+      - 'rucio/make_tarball.sh'
+      - 'rucio/common/**'
+      - '.github/workflows/build_rucio-rbac_tarball.yaml'
+  workflow_dispatch:
+    inputs:
+      fork_sha:
+        description: 'Full commit (40 characters) of hdemule/rucio to build. Empty = the commit in rucio-rbac/make_tarball.sh'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  build-tarball:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y make gcc zlib1g-dev libbz2-dev libreadline-dev \
+            libsqlite3-dev libssl-dev tk-dev libffi-dev liblzma-dev uuid-dev \
+            libgdbm-dev libnsl-dev git curl rsync unzip openssl
+
+      - name: Install Python toolchain via pyenv and run build
+        env:
+          FORK_SHA_INPUT: ${{ github.event.inputs.fork_sha }}
+        run: |
+          # Install pyenv
+          curl https://pyenv.run | bash
+
+          # Set up pyenv environment
+          export PYENV_ROOT="$HOME/.pyenv"
+          export PATH="$PYENV_ROOT/bin:$PATH"
+          eval "$(pyenv init --path)"
+          eval "$(pyenv init -)"
+          eval "$(pyenv virtualenv-init -)"
+
+          # Baseline Python used to bootstrap the scripts
+          pyenv install -s 3.11.9
+          pyenv global 3.11.9
+
+          # The input goes through an environment variable (not into the shell text).
+          # make_tarball.sh checks that it is a full commit.
+          if [ -n "$FORK_SHA_INPUT" ]; then export FORK_SHA="$FORK_SHA_INPUT"; fi
+
+          chmod +x ./rucio/make_tarball.sh ./rucio-rbac/make_tarball.sh
+          ./rucio-rbac/make_tarball.sh
+
+      - name: Upload tarball artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rucio-clients-rbac
+          path: |
+            rucio-rbac/rucio-clients-*.tar.gz
+            rucio-rbac/rucio-clients-*.tar.gz.sha256
+          if-no-files-found: error
