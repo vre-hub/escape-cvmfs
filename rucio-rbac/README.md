@@ -9,8 +9,8 @@ The default build copies `hdemule/rucio-clients-rbac:7273054bfdc4`.
 
 | Image (`rbac.Dockerfile`) | CVMFS tarball |
 |---|---|
-| Base `rucio/rucio-clients:release-41.1.1` (Python 3.9, dependency versions) | Dependency versions pinned in `constraints-image.txt` (read from the image layers). Python is the one of the host (SWAN), through `RUCIO_PYTHONBIN`. |
-| Client wheel of the fork, built from one commit with `tools/build_sdist_wheel.sh clients` and this `vcsversion.py`: `VERSION='41.0.0rc1+rbac.<sha12>'`, `BRANCH_NICK='rbac'` | Same commit, same version file, same command. `make_tarball.sh` checks that the wheel content is **identical** to the wheel in the image (hash of every file). |
+| Base `rucio/rucio-clients:release-41.1.1` (Python 3.9, dependency versions) | Dependency versions pinned in `constraints-image.txt` (read from the image layers). Python is the one of the host (SWAN), through `RUCIO_PYTHONBIN`. The tarball has `site-packages` for **Python 3.11, 3.12 and 3.13** (3.11.9, 3.12.2, 3.13.11 in the build). |
+| Client wheel of the fork, built from one commit with `tools/build_sdist_wheel.sh clients` and this `vcsversion.py`: `VERSION='41.0.0rc1+rbac.<sha12>'`, `BRANCH_NICK='rbac'` | Same commit, same version file, same command. `make_tarball.sh` checks that the wheel content is **identical** to the wheel in the image (hash of every file, except `dist-info/WHEEL`: it records the `setuptools` version of the build, which depends on the Python version of the build). |
 | `/opt/rucio/etc/rucio.cfg` | `etc/rucio.cfg`. One change: `ca_cert = $RUCIO_HOME/etc/tls-ca-bundle.pem` (the client expands the variable), so the file does not depend on the folder name. `RUCIO_CONFIG` points to it. |
 | `/certs/tls-ca-bundle.pem` (152 certificates, with Sectigo and the CERN CAs) | `etc/tls-ca-bundle.pem`, the same file. `etc/certificates/` is a hashed CA directory made from it, for `X509_CERT_DIR` (EOS downloads with `gfal2`, and the Rucio API). |
 | `/usr/local/bin/set-username` (edits `rucio.cfg`, removes the token) | A shell function `set-username` in `setup-tutorial.sh`. The config on CVMFS is read-only, so it sets `RUCIO_ACCOUNT` and removes the token. |
@@ -30,7 +30,7 @@ The workflow `.github/workflows/build_rucio-rbac_tarball.yaml` builds the tarbal
 
 ## Build by hand
 
-Needs Linux or macOS, `pyenv` with Python 3.11.9 and 3.12.2, `pyenv-virtualenv`, `git`, `openssl`, `rsync`, `unzip`.
+Needs Linux or macOS, `pyenv` with Python 3.11.9, 3.12.2 and 3.13.11 (the build installs them if they are missing; an old `pyenv` may not know 3.13.11: run `pyenv update`), `pyenv-virtualenv`, `git`, `openssl`, `rsync`, `unzip`.
 Same prerequisites as `../rucio/README.md`.
 
 ```bash
@@ -39,6 +39,7 @@ deactivate                  # no virtualenv may be active (the script checks thi
 ```
 
 Other commit: `FORK_SHA=<40 characters> ./make_tarball.sh` (the check against the image wheel is skipped).
+Other Python versions: `RUCIO_PYTHON_VERSIONS="3.11.9 3.12.2 3.13.11" ./make_tarball.sh` (a space-separated list).
 Output: `rucio-clients-41.1.1-rbac-<sha12>.tar.gz` and `.sha256` in this folder.
 
 To get the dependency versions of another image, read the `site-packages` folder in its layers and update `constraints-image.txt`.

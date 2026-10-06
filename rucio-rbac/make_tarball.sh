@@ -38,10 +38,12 @@ SHORT="${FORK_SHA:0:12}"
 PACKAGE_VERSION="${PACKAGE_VERSION:-41.0.0rc1+rbac.${SHORT}}"
 # Folder name on CVMFS: /cvmfs/sw.escape.eu/rucio/<LABEL>
 LABEL="${LABEL:-41.1.1-rbac-${SHORT}}"
-# Fingerprint of the wheel in the image: sha256 of the sorted RECORD lines (without the RECORD line itself).
-# It is checked for the default commit only.
+# Fingerprint of the wheel in the image: sha256 of the sorted RECORD lines, without the lines of RECORD and WHEEL.
+# WHEEL is left out on purpose: it records the setuptools version that built the wheel, and this version depends on
+# the Python version of the build (82.0.1 with Python 3.9 in the image, 84.0.0 with 3.11 and 3.12).
+# All other files (code, METADATA, entry points) must be identical. Checked for the default commit only.
 if [ "$FORK_SHA" = 7273054bfdc4bf7f1062b36673695ba169aeb38f ]; then
-  EXPECTED_RECORD_SHA256="${EXPECTED_RECORD_SHA256:-5679a8a865a7b3322d1653873e392b277809ce243d593eebe237ddcf6102fe9b}"
+  EXPECTED_RECORD_SHA256="${EXPECTED_RECORD_SHA256:-fbb1c5607595fb6597f012b0634272ba83b7a1816b115b1be511ad2b9946a43a}"
 else
   EXPECTED_RECORD_SHA256="${EXPECTED_RECORD_SHA256:-}"
 fi
@@ -72,7 +74,8 @@ if [ -n "$EXPECTED_RECORD_SHA256" ]; then
 import hashlib, sys, zipfile
 z = zipfile.ZipFile(sys.argv[1])
 rec = next(n for n in z.namelist() if n.endswith(".dist-info/RECORD"))
-lines = sorted(l for l in z.read(rec).decode().splitlines() if l and "RECORD" not in l)
+lines = sorted(l for l in z.read(rec).decode().splitlines()
+               if l and "RECORD" not in l and not l.split(",")[0].endswith(".dist-info/WHEEL"))
 print(hashlib.sha256(("\n".join(lines) + "\n").encode()).hexdigest())
 EOF
 )"
@@ -112,6 +115,8 @@ if [ -f "$SCRIPT_DIR/constraints-image.txt" ]; then
 else
   echo "    WARNING: no constraints-image.txt; dependencies are the newest versions"
 fi
+# Python versions of the tarball (the generic script reads this variable).
+export RUCIO_PYTHON_VERSIONS="${RUCIO_PYTHON_VERSIONS:-3.11.9 3.12.2 3.13.11}"
 RUCIO_CLIENTS_SPEC="$WHEEL" EXTRA_FILES_DIR="$EXTRA" \
   "$SCRIPT_DIR/../rucio/make_tarball.sh" "$LABEL"
 

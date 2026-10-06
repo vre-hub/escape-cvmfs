@@ -16,7 +16,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Defaults — override via CLI or environment
 RUCIO_VERSION="${1:-${RUCIO_VERSION:-38.3.0}}"
 BASE_PYTHON_VERSION="${BASE_PYTHON_VERSION:-3.11.9}"
-PYTHON_VERSIONS=("3.11.9" "3.12.2")
+# Space-separated list. Default 3.11.9 and 3.12.2; override with RUCIO_PYTHON_VERSIONS="3.11.9 3.12.2 3.13.11"
+read -r -a PYTHON_VERSIONS <<< "${RUCIO_PYTHON_VERSIONS:-3.11.9 3.12.2}"
 # pip requirement to install; a wheel path or VCS URL builds a non-PyPI client (e.g. rucio-rbac/)
 RUCIO_CLIENTS_SPEC="${RUCIO_CLIENTS_SPEC:-rucio-clients==${RUCIO_VERSION}}"
 # Optional directory whose contents are copied into the tarball root (e.g. etc/, extra setup scripts)
