@@ -1,0 +1,50 @@
+name: Build Celebi Tarball
+
+on:
+  workflow_dispatch:
+    inputs:
+      celebi_ref:
+        description: Full Celebi commit SHA to build
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-tarball:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout packaging repository
+        uses: actions/checkout@v4
+
+      - name: Validate source revision
+        env:
+          SOURCE_REF: ${{ inputs.celebi_ref }}
+        run: '[[ "$SOURCE_REF" =~ ^[0-9a-fA-F]{40}$ ]]'
+
+      - name: Checkout Celebi
+        uses: actions/checkout@v4
+        with:
+          repository: CelebiProjects/Celebi
+          ref: ${{ inputs.celebi_ref }}
+          path: source-celebi
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Build tarball
+        env:
+          CELEBI_SOURCE_DIR: ${{ github.workspace }}/source-celebi
+        run: |
+          chmod +x celebi/make_tarball.sh
+          celebi/make_tarball.sh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: celebi
+          path: |
+            celebi/celebi-*.tar.gz
+            celebi/celebi-*.tar.gz.sha256
+          if-no-files-found: error
