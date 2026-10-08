@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+RUNTIME="$ROOT/lib/rabbitmq"
+
+for candidate in \
+  "$RUNTIME/lib/rabbitmq/sbin/rabbitmq-server" \
+  "$RUNTIME/sbin/rabbitmq-server" \
+  "$RUNTIME/bin/rabbitmq-server"
+do
+  if [[ -x "$candidate" ]]; then
+    export PATH="$RUNTIME/bin:$RUNTIME/sbin:$RUNTIME/lib/rabbitmq/sbin:$PATH"
+    exec "$candidate" "$@"
+  fi
+done
+
+candidate="$(find "$RUNTIME" -name rabbitmq-server -perm -u+x -print -quit 2>/dev/null || true)"
+if [[ -n "$candidate" ]]; then
+  export PATH="$RUNTIME/bin:$RUNTIME/sbin:$RUNTIME/lib/rabbitmq/sbin:$PATH"
+  exec "$candidate" "$@"
+fi
+
+echo "ERROR: rabbitmq-server was not found in $RUNTIME" >&2
+exit 1
