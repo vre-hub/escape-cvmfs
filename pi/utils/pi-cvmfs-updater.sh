@@ -65,7 +65,7 @@ else
   fi
 
   echo "Downloading GitHub artifact ${ID}..."
-  curl -Ls \
+  curl -fLs \
     -H "Accept: application/vnd.github+json" \
     -H "Authorization: Bearer ${TOKEN}" \
     -H "X-GitHub-Api-Version: 2022-11-28" \
@@ -81,7 +81,7 @@ else
 fi
 
 mkdir -p "${TMPDIR}/extracted"
-tar -xzf "$TARBALL" -C "${TMPDIR}/extracted"
+tar --no-same-owner -xzf "$TARBALL" -C "${TMPDIR}/extracted"
 
 if [[ ! -x "${TMPDIR}/extracted/bin/pi" || ! -x "${TMPDIR}/extracted/node/bin/node" \
       || ! -f "${TMPDIR}/extracted/VERSION" || ! -f "${TMPDIR}/extracted/NODE_VERSION" ]]; then
@@ -90,9 +90,13 @@ if [[ ! -x "${TMPDIR}/extracted/bin/pi" || ! -x "${TMPDIR}/extracted/node/bin/no
   exit 1
 fi
 
+TARBALL_VERSION="$(tr -d '[:space:]' < "${TMPDIR}/extracted/VERSION")"
 if [[ -z "$VERSION" ]]; then
-  VERSION="$(tr -d '[:space:]' < "${TMPDIR}/extracted/VERSION")"
+  VERSION="$TARBALL_VERSION"
   echo "Auto-detected version from tarball: ${VERSION}"
+elif [[ "$VERSION" != "$TARBALL_VERSION" ]]; then
+  echo "ERROR: VERSION ${VERSION} does not match the tarball (${TARBALL_VERSION})."
+  exit 1
 fi
 
 echo "Version: ${VERSION} (Node $(cat "${TMPDIR}/extracted/NODE_VERSION"))"
@@ -105,6 +109,8 @@ LATEST_LINK="pi/latest"
 
 echo "Starting CVMFS transaction..."
 cvmfs_server transaction sw.escape.eu
+# Any failure from here on (set -e) aborts the open transaction.
+trap 'cvmfs_server abort -f sw.escape.eu >/dev/null 2>&1 || true; rm -rf "$TMPDIR"' EXIT
 
 cd "$MOUNTPOINT"
 
@@ -129,6 +135,7 @@ ln -sfn "${VERSION}" "${LATEST_LINK}"
 cd "$HOME"
 
 echo "Publishing CVMFS..."
+trap 'rm -rf "$TMPDIR"' EXIT   # published: nothing left to abort
 cvmfs_server publish sw.escape.eu
 
 echo "Done. Published Pi ${VERSION} to ${MOUNTPOINT}/${TARGET_DIR}"

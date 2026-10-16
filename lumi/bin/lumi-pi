@@ -52,8 +52,12 @@ for _f in $_managed; do
   fi
 done
 for _f in $_managed; do
-  (umask 077; cp -f "${_root}/pi/${_f}" "${_agent}/.${_f}.$$") &&
-    mv -f "${_agent}/.${_f}.$$" "${_agent}/${_f}"
+  if ! (umask 077; cp -f "${_root}/pi/${_f}" "${_agent}/.${_f}.$$") ||
+     ! mv -f "${_agent}/.${_f}.$$" "${_agent}/${_f}"; then
+    rm -f "${_agent}/.${_f}.$$"
+    echo "lumi --pi: cannot write ${_agent}/${_f}." >&2
+    exit 1
+  fi
 done
 
 export PI_CODING_AGENT_DIR="$_agent"
@@ -61,9 +65,10 @@ export PI_SKIP_VERSION_CHECK=1
 export PI_TELEMETRY=0
 
 # Pi subcommands must come first: pass them through without the chat flags
-# (`pi --skill X mcp list` would read "mcp list" as a prompt).
+# (`pi --skill X mcp list` would read "mcp list" as a prompt). Version and
+# help need no banner either.
 case "${1:-}" in
-  mcp|auth|list|config|remove|uninstall)
+  mcp|auth|list|config|remove|uninstall|--version|-v|--help|-h)
     exec "$_pi" "$@"
     ;;
 esac

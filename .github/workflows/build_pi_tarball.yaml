@@ -37,6 +37,9 @@ jobs:
           export PI_SKIP_VERSION_CHECK=1 PI_TELEMETRY=0 PI_CODING_AGENT_DIR=$(mktemp -d)
           test "$(/tmp/pi-test/bin/pi --version)" = "${PI_VERSION}"
           /tmp/pi-test/bin/pi --help > /dev/null
+          # The flags lumi-pi passes: a rename in a future Pi fails here, not at startup
+          mkdir -p /tmp/pi-skills
+          /tmp/pi-test/bin/pi --no-approve --skill /tmp/pi-skills --help > /dev/null
 
       - name: Upload tarball artifact
         uses: actions/upload-artifact@v4

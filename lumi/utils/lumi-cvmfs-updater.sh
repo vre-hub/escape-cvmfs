@@ -224,7 +224,8 @@ case ":${PATH}:" in
 esac
 
 # Where `lumi --pi` finds the Pi config (settings, models, MCP, skills)
-export LUMI_ASSISTANT_ROOT="${_lumi_config}/atom-assistant/latest"
+: "${LUMI_ASSISTANT_ROOT:=${_lumi_config}/atom-assistant/latest}"
+export LUMI_ASSISTANT_ROOT
 
 # Lumi version info
 export LUMI_VERSION="$(cat "${_lumi_dir}/../VERSION" 2>/dev/null || echo unknown)"
