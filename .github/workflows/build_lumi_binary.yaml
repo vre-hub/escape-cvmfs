@@ -50,7 +50,6 @@ jobs:
 
           cp "$BINARY" staging/bin/opencode
           chmod +x staging/bin/opencode
-          ln -sf opencode staging/bin/lumi
           echo "$VERSION" > staging/VERSION
 
           # Verify
