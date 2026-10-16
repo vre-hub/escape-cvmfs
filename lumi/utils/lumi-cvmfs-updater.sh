@@ -197,7 +197,9 @@ done
 CONFIG_SRC="$(cd "${SCRIPT_DIR}/../config" && pwd)"
 CONFIG_DST="etc/lumi"
 
-if [ -d "$CONFIG_SRC" ]; then
+if [ "$SCRIPTS_ONLY" = true ]; then
+  echo "Scripts only: leaving the shared config in ${CONFIG_DST} unchanged."
+elif [ -d "$CONFIG_SRC" ]; then
   echo "Deploying config from ${CONFIG_SRC} to ${CONFIG_DST}..."
   mkdir -p "$CONFIG_DST"
   cp -a "${CONFIG_SRC}/"* "${CONFIG_DST}/"

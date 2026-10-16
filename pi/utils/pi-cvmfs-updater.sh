@@ -72,7 +72,7 @@ else
     "${REPO_URL_BASE}/${ID}/zip" -o "${TMPDIR}/artifact.zip"
 
   (cd "$TMPDIR" && unzip -q artifact.zip)
-  TARBALL="$(ls "${TMPDIR}"/pi-*.tar.gz 2>/dev/null | head -1)"
+  TARBALL="$(ls "${TMPDIR}"/pi-*.tar.gz 2>/dev/null | head -1 || true)"
   if [[ -z "$TARBALL" ]]; then
     echo "ERROR: No pi-*.tar.gz found in artifact"
     ls -la "$TMPDIR"
@@ -83,15 +83,16 @@ fi
 mkdir -p "${TMPDIR}/extracted"
 tar -xzf "$TARBALL" -C "${TMPDIR}/extracted"
 
+if [[ ! -x "${TMPDIR}/extracted/bin/pi" || ! -x "${TMPDIR}/extracted/node/bin/node" \
+      || ! -f "${TMPDIR}/extracted/VERSION" || ! -f "${TMPDIR}/extracted/NODE_VERSION" ]]; then
+  echo "ERROR: tarball is missing bin/pi, node/bin/node, VERSION or NODE_VERSION"
+  find "${TMPDIR}/extracted" -maxdepth 2
+  exit 1
+fi
+
 if [[ -z "$VERSION" ]]; then
   VERSION="$(tr -d '[:space:]' < "${TMPDIR}/extracted/VERSION")"
   echo "Auto-detected version from tarball: ${VERSION}"
-fi
-
-if [[ ! -x "${TMPDIR}/extracted/bin/pi" || ! -x "${TMPDIR}/extracted/node/bin/node" ]]; then
-  echo "ERROR: tarball is missing bin/pi or node/bin/node"
-  find "${TMPDIR}/extracted" -maxdepth 2
-  exit 1
 fi
 
 echo "Version: ${VERSION} (Node $(cat "${TMPDIR}/extracted/NODE_VERSION"))"

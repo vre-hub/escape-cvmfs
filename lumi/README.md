@@ -77,6 +77,10 @@ commands, so `lumi --pi` is for a pilot group. `lumi --pi update` and
 `LUMI_PI_BIN`, `LUMI_ASSISTANT_ROOT`, `LUMI_PI_HOME` (agent dir, default
 `~/.lumi/pi`).
 
+`lumi --pi` overwrites `settings.json`, `models.json`, `mcp.json` and
+`AGENTS.md` in the agent dir at every start, so edits to those four files
+do not persist. Credentials, trust and sessions are never touched.
+
 ### Configuration
 
 The setup script sets `OPENCODE_CONFIG_DIR=/cvmfs/sw.escape.eu/etc/lumi`, which

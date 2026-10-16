@@ -28,10 +28,10 @@ if [ ! -d "${_root}/pi/skills" ]; then
 fi
 
 # Writable agent dir. Pi stores credentials, trust and sessions here, so it
-# must be private to the user.
-umask 077
+# must be private to the user. The umask applies only to creating it, so the
+# files the agent writes later keep the user's normal umask.
 _agent="${LUMI_PI_HOME:-${HOME:-/nonexistent}/.lumi/pi}"
-if ! mkdir -p "$_agent" 2>/dev/null; then
+if ! (umask 077; mkdir -p "$_agent") 2>/dev/null || [ ! -w "$_agent" ]; then
   _agent="$(mktemp -d)"
   echo "lumi --pi: home is not writable; using ${_agent}. Logins and sessions will not persist." >&2
 fi
@@ -40,10 +40,20 @@ if [ ! -O "$_agent" ]; then
   exit 1
 fi
 
-# Managed files are overwritten at each start. Credentials (auth.json,
-# mcp-auth.json), trust, sessions and extensions are never touched.
-for _f in settings.json models.json mcp.json AGENTS.md; do
-  cp -f "${_root}/pi/${_f}" "${_agent}/${_f}"
+# Managed files are overwritten at each start (edits to them do not persist).
+# Credentials (auth.json, mcp-auth.json), trust, sessions and extensions are
+# never touched. Copy to a temp name and rename, so a second session that
+# starts at the same time never reads a half-written file.
+_managed="settings.json models.json mcp.json AGENTS.md"
+for _f in $_managed; do
+  if [ ! -f "${_root}/pi/${_f}" ]; then
+    echo "lumi --pi: ${_root}/pi/${_f} is missing." >&2
+    exit 1
+  fi
+done
+for _f in $_managed; do
+  (umask 077; cp -f "${_root}/pi/${_f}" "${_agent}/.${_f}.$$") &&
+    mv -f "${_agent}/.${_f}.$$" "${_agent}/${_f}"
 done
 
 export PI_CODING_AGENT_DIR="$_agent"
