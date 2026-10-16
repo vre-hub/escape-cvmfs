@@ -288,6 +288,9 @@ if [ -z "${LITELLM_API_KEY:-}" ]; then
     echo "║                                                                    ║"
     echo "║  2. Request access to the lumi-api-access egroup:                  ║"
     echo "║     https://gms.web.cern.ch/group/lumi-api-access                  ║"
+    echo "║     Then log in to https://aigw.cern.ch/ and create an API key     ║"
+    echo "║     for the team 'lumi-api-access'.                                ║"
+    echo "║     Export it as LITELLM_API_KEY (see 1).                          ║"
     echo "╚════════════════════════════════════════════════════════════════════╝"
     echo ""
   fi
