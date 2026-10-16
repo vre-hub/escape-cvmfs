@@ -6,12 +6,17 @@ CVMFS packaging for [lumi](https://github.com/Soap2G/opencode) — CERN's AI cod
 
 ```
 lumi/
-  config/                  # Shared config — deployed to /cvmfs/sw.escape.eu/etc/lumi/
-    opencode.json          # Provider, model, MCP, permission config
-    AGENTS.md              # System instructions for lumi agents
+  bin/
+    lumi                   # entry point: opencode, or Pi with --pi
+    lumi-pi                # starts Pi with the Lumi config (experimental)
+  config/                  # LEGACY (old root-help/physics content), do not edit.
+                           # The live config comes from atom-assistant
+                           # (open-data-assistant-config repo).
   utils/
     lumi-cvmfs-updater.sh  # Deployment script
 ```
+
+The Pi runtime itself (Node + Pi) lives in [`../pi/`](../pi/README.md).
 
 ### CVMFS layout
 
@@ -24,10 +29,17 @@ lumi/
     <version>/
       bin/
         opencode           # compiled binary
-        lumi               # symlink -> opencode
+        lumi               # script: opencode, or lumi-pi with --pi
+        lumi-pi            # starts Pi with the Lumi config
         setup.sh           # user sources this
       VERSION
     latest -> <version>/   # symlink
+  pi/                      # Pi runtime, own version axis (see ../pi/README.md)
+    <pi-version>/
+    latest -> <pi-version>/
+  etc/lumi/atom-assistant/<version>/
+    config/                # opencode reads this
+    pi/                    # generated Pi config, read by lumi-pi
 ```
 
 The config directory (`etc/lumi/`) is **version-independent** — it can be updated
@@ -45,14 +57,25 @@ OPENCODE_REPO=/path/to/opencode ./utils/lumi-cvmfs-updater.sh 1.3.15
 
 # Overwrite existing version:
 ./utils/lumi-cvmfs-updater.sh -f 1.3.15
+
+# Update only lumi, lumi-pi and setup.sh in an existing version (no new binary).
+# Default version: the target of lumi/latest.
+./utils/lumi-cvmfs-updater.sh --scripts-only [VERSION]
 ```
 
 ### User setup
 
 ```bash
 source /cvmfs/sw.escape.eu/lumi/latest/bin/setup.sh
-lumi
+lumi          # opencode with the Lumi config
+lumi --pi     # Pi with the Lumi config (experimental)
 ```
+
+`--pi` is read only as the first argument. Pi does not ask before it runs
+commands, so `lumi --pi` is for a pilot group. `lumi --pi update` and
+`lumi --pi install` are blocked: CVMFS manages Pi. Overrides:
+`LUMI_PI_BIN`, `LUMI_ASSISTANT_ROOT`, `LUMI_PI_HOME` (agent dir, default
+`~/.lumi/pi`).
 
 ### Configuration
 

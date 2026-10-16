@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Lumi entry point: opencode by default, Pi with --pi as first argument.
+set -euo pipefail
+_dir="$(cd "$(dirname -- "$(readlink -f -- "$0")")" && pwd)"
+if [ "${1:-}" = "--pi" ]; then
+  shift
+  exec "${_dir}/lumi-pi" "$@"
+fi
+exec "${_dir}/opencode" "$@"

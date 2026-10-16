@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Pi launcher for CVMFS. Runs the bundled Node explicitly: Node is NOT put on
+# PATH, so the agent's bash tool does not inherit it.
+set -euo pipefail
+_root="$(cd "$(dirname -- "$(readlink -f -- "$0")")/.." && pwd)"
+exec "${_root}/node/bin/node" \
+  "${_root}/app/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js" "$@"

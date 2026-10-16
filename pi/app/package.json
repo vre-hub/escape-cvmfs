@@ -1,0 +1,9 @@
+{
+  "name": "lumi-pi-app",
+  "version": "1.3.0",
+  "private": true,
+  "description": "Pinned install of the Pi coding agent for CVMFS (see ../README.md)",
+  "dependencies": {
+    "@earendil-works/pi-coding-agent": "1.3.0"
+  }
+}

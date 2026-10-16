@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+# Start the Pi coding agent with the Lumi configuration (experimental).
+# Called by `lumi --pi`.
+#
+# Overrides: LUMI_PI_BIN, LUMI_ASSISTANT_ROOT, LUMI_PI_HOME.
+set -euo pipefail
+
+_pi="${LUMI_PI_BIN:-/cvmfs/sw.escape.eu/pi/latest/bin/pi}"
+_root="${LUMI_ASSISTANT_ROOT:-/cvmfs/sw.escape.eu/etc/lumi/atom-assistant/latest}"
+
+# Managed by CVMFS: block self-update and package install.
+case "${1:-}" in
+  update|install)
+    echo "lumi --pi: Pi is managed by CVMFS; ask the Lumi maintainers." >&2
+    exit 1
+    ;;
+esac
+
+if [ ! -x "$_pi" ]; then
+  echo "lumi --pi: Pi launcher not found: ${_pi}" >&2
+  echo "  Pi is not published on this CVMFS mount, or LUMI_PI_BIN is wrong." >&2
+  exit 1
+fi
+if [ ! -d "${_root}/pi/skills" ]; then
+  echo "lumi --pi: Lumi config for Pi not found under ${_root}" >&2
+  echo "  Expected ${_root}/pi/ with the generated files and skills/." >&2
+  exit 1
+fi
+
+# Writable agent dir. Pi stores credentials, trust and sessions here, so it
+# must be private to the user.
+umask 077
+_agent="${LUMI_PI_HOME:-${HOME:-/nonexistent}/.lumi/pi}"
+if ! mkdir -p "$_agent" 2>/dev/null; then
+  _agent="$(mktemp -d)"
+  echo "lumi --pi: home is not writable; using ${_agent}. Logins and sessions will not persist." >&2
+fi
+if [ ! -O "$_agent" ]; then
+  echo "lumi --pi: ${_agent} is not owned by you; refusing to start." >&2
+  exit 1
+fi
+
+# Managed files are overwritten at each start. Credentials (auth.json,
+# mcp-auth.json), trust, sessions and extensions are never touched.
+for _f in settings.json models.json mcp.json AGENTS.md; do
+  cp -f "${_root}/pi/${_f}" "${_agent}/${_f}"
+done
+
+export PI_CODING_AGENT_DIR="$_agent"
+export PI_SKIP_VERSION_CHECK=1
+export PI_TELEMETRY=0
+
+# Pi subcommands must come first: pass them through without the chat flags
+# (`pi --skill X mcp list` would read "mcp list" as a prompt).
+case "${1:-}" in
+  mcp|auth|list|config|remove|uninstall)
+    exec "$_pi" "$@"
+    ;;
+esac
+
+_quiet=false
+for _a in "$@"; do
+  case "$_a" in -p|--print|--mode|--mode=*) _quiet=true ;; esac
+done
+if [ "$_quiet" = false ]; then
+  echo "Lumi on Pi (experimental): Pi does not ask before it runs commands." >&2
+fi
+
+exec "$_pi" --no-approve --skill "${_root}/pi/skills" "$@"

@@ -1,0 +1,44 @@
+name: Build Pi Tarball
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'pi/**'
+  workflow_dispatch:
+
+env:
+  # Official Node.js linux-x64 tarball. Bump both together; the hash comes from
+  # https://nodejs.org/dist/v<NODE_VERSION>/SHASUMS256.txt
+  NODE_VERSION: '22.23.3'
+  NODE_SHA256: 'df450af89261115ef9f9e3830c3eeb2cc9213b63c720b1af623cb5dcbe2e02de'
+
+jobs:
+  build-tarball:
+    runs-on: ubuntu-latest
+    # EL9 so any prebuilt native module matches lxplus glibc.
+    container: almalinux:9
+
+    steps:
+      - name: Install system dependencies
+        run: dnf install -y tar xz gzip
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build tarball
+        run: ./pi/make_tarball.sh
+
+      - name: Smoke test
+        run: |
+          mkdir -p /tmp/pi-test && tar -xzf pi/pi-*.tar.gz -C /tmp/pi-test
+          PI_VERSION=$(cat /tmp/pi-test/VERSION)
+          export PI_SKIP_VERSION_CHECK=1 PI_TELEMETRY=0 PI_CODING_AGENT_DIR=$(mktemp -d)
+          test "$(/tmp/pi-test/bin/pi --version)" = "${PI_VERSION}"
+          /tmp/pi-test/bin/pi --help > /dev/null
+
+      - name: Upload tarball artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pi
+          path: pi/pi-*.tar.gz

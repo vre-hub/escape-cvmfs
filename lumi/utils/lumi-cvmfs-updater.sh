@@ -5,13 +5,18 @@
 # Usage:
 #   ./lumi-cvmfs-updater.sh [-f|--force] <GITHUB_TOKEN> <ARTIFACT_ID> [VERSION]
 #   OPENCODE_REPO=/path/to/opencode ./lumi-cvmfs-updater.sh [-f|--force] [VERSION]
+#   ./lumi-cvmfs-updater.sh --scripts-only [VERSION]
 #
 # Modes:
 #   1. GitHub artifact: provide TOKEN + ARTIFACT_ID (from build_lumi_binary workflow)
 #   2. Local build:     set OPENCODE_REPO env var (must run `bun install` from repo root first)
+#   3. Scripts only:    --scripts-only re-copies lumi, lumi-pi and setup.sh into an
+#                       existing lumi/<VERSION> (default: the target of `latest`)
+#                       without a new binary.
 #
 # Options:
-#   -f, --force    Replace existing version if it exists
+#   -f, --force       Replace existing version if it exists
+#   --scripts-only    Update the launcher scripts and setup.sh only (see above)
 #
 # Mirrors the pattern used by atlasopenmagic/ and rucio/ in this repo.
 #
@@ -23,10 +28,15 @@ SCRIPT_DIR="$(cd "$(dirname -- "$0")" && pwd)"
 
 # Parse options
 FORCE=false
+SCRIPTS_ONLY=false
 while [[ $# -gt 0 ]]; do
   case $1 in
     -f|--force)
       FORCE=true
+      shift
+      ;;
+    --scripts-only)
+      SCRIPTS_ONLY=true
       shift
       ;;
     *)
@@ -44,7 +54,19 @@ REPO_URL_BASE="https://api.github.com/repos/vre-hub/escape-cvmfs/actions/artifac
 TMPDIR="$(mktemp -d)"
 trap 'rm -rf "$TMPDIR"' EXIT
 
-if [[ -n "${OPENCODE_REPO:-}" ]]; then
+if [ "$SCRIPTS_ONLY" = true ]; then
+  # --- Mode: scripts only (no binary) ---
+  VERSION="${1:-}"
+  if [[ -z "$VERSION" ]]; then
+    VERSION="$(readlink "${MOUNTPOINT}/lumi/latest")"
+    echo "Using the version that lumi/latest points to: ${VERSION}"
+  fi
+  if [[ ! -x "${MOUNTPOINT}/lumi/${VERSION}/bin/opencode" ]]; then
+    echo "ERROR: ${MOUNTPOINT}/lumi/${VERSION} has no bin/opencode. Publish that version first."
+    exit 1
+  fi
+
+elif [[ -n "${OPENCODE_REPO:-}" ]]; then
   # --- Mode: local build ---
   VERSION="${1:-}"
   if [[ -z "$VERSION" ]]; then
@@ -120,7 +142,9 @@ else
   cd - >/dev/null
 fi
 
-echo "Binary: ${BINARY}"
+if [ "$SCRIPTS_ONLY" != true ]; then
+  echo "Binary: ${BINARY}"
+fi
 echo "Version: ${VERSION}"
 
 # ---------------------------------------------------------------------------
@@ -134,26 +158,35 @@ cvmfs_server transaction sw.escape.eu
 
 cd "$MOUNTPOINT"
 
-if [ -d "$TARGET_DIR" ]; then
-  if [ "$FORCE" = true ]; then
-    echo "Directory $TARGET_DIR exists. Force flag enabled — removing..."
-    rm -rf "$TARGET_DIR"
-  else
-    echo "Directory $TARGET_DIR already exists. Use -f to overwrite."
-    cvmfs_server abort sw.escape.eu
-    exit 1
+if [ "$SCRIPTS_ONLY" != true ]; then
+  if [ -d "$TARGET_DIR" ]; then
+    if [ "$FORCE" = true ]; then
+      echo "Directory $TARGET_DIR exists. Force flag enabled — removing..."
+      rm -rf "$TARGET_DIR"
+    else
+      echo "Directory $TARGET_DIR already exists. Use -f to overwrite."
+      cvmfs_server abort sw.escape.eu
+      exit 1
+    fi
   fi
+
+  echo "Creating ${TARGET_DIR}..."
+  mkdir -p "${TARGET_DIR}/bin"
+
+  cp "$BINARY" "${TARGET_DIR}/bin/opencode"
+  chmod +x "${TARGET_DIR}/bin/opencode"
+
+  # Write version marker
+  echo "${VERSION}" > "${TARGET_DIR}/VERSION"
 fi
 
-echo "Creating ${TARGET_DIR}..."
-mkdir -p "${TARGET_DIR}/bin"
-
-cp "$BINARY" "${TARGET_DIR}/bin/opencode"
-chmod +x "${TARGET_DIR}/bin/opencode"
-ln -sf opencode "${TARGET_DIR}/bin/lumi"
-
-# Write version marker
-echo "${VERSION}" > "${TARGET_DIR}/VERSION"
+# Entry points: `lumi` starts opencode, or Pi with --pi (see lumi/bin/).
+for _s in lumi lumi-pi; do
+  # Replace first so an old `lumi` symlink to opencode is not written through.
+  rm -f "${TARGET_DIR}/bin/${_s}"
+  cp "${SCRIPT_DIR}/../bin/${_s}" "${TARGET_DIR}/bin/${_s}"
+  chmod +x "${TARGET_DIR}/bin/${_s}"
+done
 
 # ---------------------------------------------------------------------------
 # Deploy shared config directory
@@ -188,6 +221,9 @@ case ":${PATH}:" in
   *) export PATH="${_lumi_dir}:${PATH}" ;;
 esac
 
+# Where `lumi --pi` finds the Pi config (settings, models, MCP, skills)
+export LUMI_ASSISTANT_ROOT="${_lumi_config}/atom-assistant/latest"
+
 # Lumi version info
 export LUMI_VERSION="$(cat "${_lumi_dir}/../VERSION" 2>/dev/null || echo unknown)"
 
@@ -201,6 +237,18 @@ mkdir -p "$_lumi_data" 2>/dev/null
 # SQLite WAL mode doesn't work on EOS (no mmap/flock support).
 # Store the database on a local filesystem instead.
 export OPENCODE_DB="${_lumi_data}/opencode.db"
+
+# opencode also writes logs, sessions and cache under $XDG_DATA_HOME/opencode
+# (default ~/.local/share/opencode). On notebook/batch hosts (e.g. REANA) that
+# home path is often read-only or owned by another UID, which makes opencode
+# abort at startup with:
+#   PermissionDenied: FileSystem.open (.../opencode/log/opencode.log)
+# Point it at the same local scratch dir we use for the DB. Only override when
+# not already set, so a user who exported their own XDG_DATA_HOME keeps it.
+if [ -z "${XDG_DATA_HOME:-}" ]; then
+  export XDG_DATA_HOME="${_lumi_data}/share"
+fi
+mkdir -p "${XDG_DATA_HOME}/opencode/log" 2>/dev/null || true
 
 # Load atom-assistant setup if available
 _atom_setup="/cvmfs/sw.escape.eu/etc/lumi/atom-assistant/latest/bin/setup.sh"
@@ -248,8 +296,10 @@ unset _lumi_dir _lumi_config _lumi_data _lumi_cfg _lumi_cfg_src
 SETUP_EOF
 chmod +x "${TARGET_DIR}/bin/setup.sh"
 
-# Update the "latest" symlink
-ln -sfn "${VERSION}" "${LATEST_LINK}"
+# Update the "latest" symlink (not for --scripts-only: that edits an existing release)
+if [ "$SCRIPTS_ONLY" != true ]; then
+  ln -sfn "${VERSION}" "${LATEST_LINK}"
+fi
 
 cd "$HOME"
 
