@@ -1,0 +1,241 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+: "${YUKI_PYTHONBIN:?Source /cvmfs/sw.escape.eu/yuki/latest/setup.sh first}"
+YUKIDIR="${YUKIDIR:-$HOME/.Yuki}"
+RABBIT_DIR="$YUKIDIR/RabbitMQ"
+RUN_DIR="$YUKIDIR/run"
+LOG_DIR="$YUKIDIR/logs"
+YUKI_PID_FILE="$RUN_DIR/yuki.pid"
+RABBIT_OWNED_FILE="$RUN_DIR/rabbitmq-owned"
+YUKI_LOG="$LOG_DIR/yuki.log"
+RABBIT_LOG="$LOG_DIR/rabbitmq-startup.log"
+YUKI_PORT=3315
+RABBITMQ_PORT="${RABBITMQ_PORT:-5672}"
+START_TIMEOUT="${YUKI_START_TIMEOUT:-60}"
+
+export YUKIDIR
+export CELERY_BROKER_URL="${CELERY_BROKER_URL:-amqp://127.0.0.1:${RABBITMQ_PORT}}"
+export RABBITMQ_ALLOW_INPUT_NON_SENSITIVE_DATA=1
+export RABBITMQ_CONFIG_FILE="$RABBIT_DIR/rabbitmq.conf"
+export RABBITMQ_MNESIA_BASE="$RABBIT_DIR/mnesia"
+export RABBITMQ_LOG_BASE="$RABBIT_DIR/log"
+export RABBITMQ_PID_FILE="$RABBIT_DIR/rabbitmq.pid"
+export RABBITMQ_ENABLED_PLUGINS_FILE="$RABBIT_DIR/enabled_plugins"
+export RABBITMQ_NODENAME="${RABBITMQ_NODENAME:-yuki_rabbit@localhost}"
+
+usage() {
+  echo "Usage: yuki-service {start|status|logs|stop|restart}" >&2
+}
+
+prepare_dirs() {
+  mkdir -p \
+    "$RABBITMQ_MNESIA_BASE" "$RABBITMQ_LOG_BASE" \
+    "$YUKIDIR/Storage" "$YUKIDIR/Workflows" "$RUN_DIR" "$LOG_DIR"
+  chmod 700 "$YUKIDIR" "$RABBIT_DIR" "$RUN_DIR" 2>/dev/null || true
+  if ! grep -q '^deprecated_features\.permit\.transient_nonexcl_queues[[:space:]]*=' \
+      "$RABBITMQ_CONFIG_FILE" 2>/dev/null; then
+    printf '%s\n' \
+      'deprecated_features.permit.transient_nonexcl_queues = true' \
+      >> "$RABBITMQ_CONFIG_FILE"
+  fi
+}
+
+port_open() {
+  "$YUKI_PYTHONBIN" - "$1" <<'PY'
+import socket
+import sys
+
+try:
+    with socket.create_connection(("127.0.0.1", int(sys.argv[1])), timeout=0.5):
+        pass
+except OSError:
+    raise SystemExit(1)
+PY
+}
+
+wait_for_port() {
+  local port="$1" label="$2" elapsed=0
+  while ! port_open "$port"; do
+    if (( elapsed >= START_TIMEOUT )); then
+      echo "ERROR: $label did not become ready on port $port after ${START_TIMEOUT}s." >&2
+      return 1
+    fi
+    sleep 1
+    ((elapsed += 1))
+  done
+}
+
+read_yuki_pid() {
+  [[ -r "$YUKI_PID_FILE" ]] || return 1
+  local pid
+  pid="$(cat "$YUKI_PID_FILE")"
+  [[ "$pid" =~ ^[1-9][0-9]*$ ]] || return 1
+  printf '%s\n' "$pid"
+}
+
+yuki_running() {
+  local pid
+  pid="$(read_yuki_pid)" || return 1
+  kill -0 "$pid" 2>/dev/null
+}
+
+start_rabbitmq() {
+  if port_open "$RABBITMQ_PORT"; then
+    echo "RabbitMQ is already available on port $RABBITMQ_PORT."
+    return
+  fi
+
+  echo "Starting RabbitMQ..."
+  : > "$RABBIT_LOG"
+  if ! "$ROOT/bin/rabbitmq-server" -detached >> "$RABBIT_LOG" 2>&1; then
+    echo "ERROR: RabbitMQ failed to start. Log: $RABBIT_LOG" >&2
+    tail -n 80 "$RABBIT_LOG" >&2 || true
+    return 1
+  fi
+  : > "$RABBIT_OWNED_FILE"
+  if ! wait_for_port "$RABBITMQ_PORT" RabbitMQ; then
+    tail -n 80 "$RABBIT_LOG" >&2 || true
+    stop_rabbitmq || true
+    return 1
+  fi
+  echo "RabbitMQ is ready."
+}
+
+start_yuki() {
+  if yuki_running; then
+    echo "Yuki is already running (PID $(read_yuki_pid))."
+    return
+  fi
+  rm -f "$YUKI_PID_FILE"
+  if port_open "$YUKI_PORT"; then
+    echo "ERROR: port $YUKI_PORT is already in use by another process." >&2
+    return 1
+  fi
+
+  echo "Starting Yuki..."
+  if command -v setsid >/dev/null 2>&1; then
+    nohup setsid "$ROOT/bin/yuki" server start >> "$YUKI_LOG" 2>&1 < /dev/null &
+  else
+    nohup "$ROOT/bin/yuki" server start >> "$YUKI_LOG" 2>&1 < /dev/null &
+  fi
+  local pid=$!
+  printf '%s\n' "$pid" > "$YUKI_PID_FILE"
+
+  if ! wait_for_port "$YUKI_PORT" Yuki; then
+    echo "Yuki startup log:" >&2
+    tail -n 120 "$YUKI_LOG" >&2 || true
+    stop_yuki || true
+    return 1
+  fi
+  if ! kill -0 "$pid" 2>/dev/null; then
+    echo "ERROR: Yuki exited during startup. Log: $YUKI_LOG" >&2
+    tail -n 120 "$YUKI_LOG" >&2 || true
+    rm -f "$YUKI_PID_FILE"
+    return 1
+  fi
+  echo "Yuki is ready on port $YUKI_PORT (PID $pid)."
+}
+
+stop_yuki() {
+  local pid
+  if ! pid="$(read_yuki_pid)" || ! kill -0 "$pid" 2>/dev/null; then
+    rm -f "$YUKI_PID_FILE"
+    echo "Yuki is not running."
+    return
+  fi
+
+  echo "Stopping Yuki (PID $pid)..."
+  kill -TERM -- "-$pid" 2>/dev/null || kill -TERM "$pid" 2>/dev/null || true
+  local elapsed=0
+  while kill -0 "$pid" 2>/dev/null && (( elapsed < 20 )); do
+    sleep 1
+    ((elapsed += 1))
+  done
+  if kill -0 "$pid" 2>/dev/null; then
+    echo "Yuki did not stop cleanly; sending SIGKILL." >&2
+    kill -KILL -- "-$pid" 2>/dev/null || kill -KILL "$pid" 2>/dev/null || true
+  fi
+  rm -f "$YUKI_PID_FILE"
+}
+
+stop_rabbitmq() {
+  if [[ ! -e "$RABBIT_OWNED_FILE" ]]; then
+    echo "RabbitMQ was not started by yuki-service; leaving it running."
+    return
+  fi
+  echo "Stopping RabbitMQ..."
+  "$ROOT/bin/rabbitmqctl" -n "$RABBITMQ_NODENAME" shutdown \
+    >> "$RABBIT_LOG" 2>&1 || true
+  local elapsed=0
+  while port_open "$RABBITMQ_PORT" && (( elapsed < 20 )); do
+    sleep 1
+    ((elapsed += 1))
+  done
+  if port_open "$RABBITMQ_PORT"; then
+    echo "ERROR: RabbitMQ is still listening on port $RABBITMQ_PORT." >&2
+    echo "See $RABBIT_LOG and $RABBITMQ_LOG_BASE for details." >&2
+    return 1
+  fi
+  rm -f "$RABBIT_OWNED_FILE"
+}
+
+service_start() {
+  prepare_dirs
+  start_rabbitmq
+  if ! start_yuki; then
+    stop_rabbitmq || true
+    return 1
+  fi
+  echo "Logs: $YUKI_LOG"
+}
+
+service_status() {
+  local failed=0
+  if port_open "$RABBITMQ_PORT"; then
+    echo "RabbitMQ: running (port $RABBITMQ_PORT)"
+  else
+    echo "RabbitMQ: stopped"
+    failed=1
+  fi
+  if yuki_running && port_open "$YUKI_PORT"; then
+    echo "Yuki:     running (PID $(read_yuki_pid), port $YUKI_PORT)"
+  else
+    echo "Yuki:     stopped"
+    failed=1
+  fi
+  return "$failed"
+}
+
+service_logs() {
+  prepare_dirs
+  echo "==> $YUKI_LOG <=="
+  tail -n "${YUKI_LOG_LINES:-200}" "$YUKI_LOG" 2>/dev/null || true
+  echo
+  echo "==> $RABBIT_LOG <=="
+  tail -n "${YUKI_LOG_LINES:-200}" "$RABBIT_LOG" 2>/dev/null || true
+  local rabbit_log
+  for rabbit_log in "$RABBITMQ_LOG_BASE"/*.log; do
+    [[ -e "$rabbit_log" ]] || continue
+    echo
+    echo "==> $rabbit_log <=="
+    tail -n "${YUKI_LOG_LINES:-200}" "$rabbit_log" 2>/dev/null || true
+  done
+}
+
+service_stop() {
+  prepare_dirs
+  stop_yuki
+  stop_rabbitmq
+}
+
+case "${1:-}" in
+  start) service_start ;;
+  status) prepare_dirs; service_status ;;
+  logs) service_logs ;;
+  stop) service_stop ;;
+  restart) service_stop; service_start ;;
+  *) usage; exit 2 ;;
+esac
