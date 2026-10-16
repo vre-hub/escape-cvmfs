@@ -202,6 +202,18 @@ mkdir -p "$_lumi_data" 2>/dev/null
 # Store the database on a local filesystem instead.
 export OPENCODE_DB="${_lumi_data}/opencode.db"
 
+# opencode also writes logs, sessions and cache under $XDG_DATA_HOME/opencode
+# (default ~/.local/share/opencode). On notebook/batch hosts (e.g. REANA) that
+# home path is often read-only or owned by another UID, which makes opencode
+# abort at startup with:
+#   PermissionDenied: FileSystem.open (.../opencode/log/opencode.log)
+# Point it at the same local scratch dir we use for the DB. Only override when
+# not already set, so a user who exported their own XDG_DATA_HOME keeps it.
+if [ -z "${XDG_DATA_HOME:-}" ]; then
+  export XDG_DATA_HOME="${_lumi_data}/share"
+fi
+mkdir -p "${XDG_DATA_HOME}/opencode/log" 2>/dev/null || true
+
 # Load atom-assistant setup if available
 _atom_setup="/cvmfs/sw.escape.eu/etc/lumi/atom-assistant/latest/bin/setup.sh"
 if [ -f "$_atom_setup" ]; then
