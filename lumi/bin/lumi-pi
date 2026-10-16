@@ -21,9 +21,9 @@ if [ ! -x "$_pi" ]; then
   echo "  Pi is not published on this CVMFS mount, or LUMI_PI_BIN is wrong." >&2
   exit 1
 fi
-if [ ! -d "${_root}/pi" ] || [ ! -d "${_root}/config/skills" ]; then
+if [ ! -d "${_root}/pi/skills" ]; then
   echo "lumi --pi: Lumi config for Pi not found under ${_root}" >&2
-  echo "  Expected ${_root}/pi and ${_root}/config/skills." >&2
+  echo "  Expected ${_root}/pi/ with the generated files and skills/." >&2
   exit 1
 fi
 
@@ -66,4 +66,4 @@ if [ "$_quiet" = false ]; then
   echo "Lumi on Pi (experimental): Pi does not ask before it runs commands." >&2
 fi
 
-exec "$_pi" --no-approve --skill "${_root}/config/skills" "$@"
+exec "$_pi" --no-approve --skill "${_root}/pi/skills" "$@"
